@@ -12,6 +12,7 @@ dist
 dist-ssr
 .env
 .agents
+schema.sql
 *.local
 
 # Editor directories and files
