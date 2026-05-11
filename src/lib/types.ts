@@ -1,11 +1,13 @@
 export interface Player {
   id: string;
+  tournament_id: string;
   name: string;
   active: boolean;
 }
 
 export interface Match {
   id: string;
+  tournament_id: string;
   round: number;
   team1: string[]; // Player IDs
   team2: string[]; // Player IDs
@@ -26,4 +28,5 @@ export interface Tournament {
 export interface TournamentStoreState {
   tournaments: Tournament[];
   activeTournamentId: string | null;
+  isInitialized: boolean;
 }

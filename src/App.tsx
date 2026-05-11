@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTournamentStore } from './store/tournamentStore';
 import { Dashboard } from './components/Dashboard';
 import { PlayerManagement } from './components/PlayerManagement';
@@ -9,7 +9,21 @@ import { ArrowLeft } from 'lucide-react';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'matches' | 'leaderboard'>('dashboard');
-  const { activeTournamentId, tournaments, setActiveTournament } = useTournamentStore();
+  const { activeTournamentId, tournaments, setActiveTournament, init, isInitialized } = useTournamentStore();
+
+  useEffect(() => {
+    if (!isInitialized) {
+      init();
+    }
+  }, [init, isInitialized]);
+
+  if (!isInitialized) {
+    return (
+      <div className="container flex items-center justify-center" style={{ minHeight: '100vh', display: 'flex' }}>
+        <div className="text-gradient" style={{ fontSize: '1.5rem', fontWeight: 600 }}>Loading Tournaments...</div>
+      </div>
+    );
+  }
 
   if (!activeTournamentId) {
     return <HomeScreen />;

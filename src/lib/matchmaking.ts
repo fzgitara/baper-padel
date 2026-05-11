@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Match, Player } from './types';
 
-export function generateRounds(players: Player[], existingMatches: Match[]): Match[] {
+export function generateRounds(players: Player[], existingMatches: Match[], tournamentId: string): Match[] {
   const completedMatches = existingMatches.filter(m => m.status === 'completed');
   const activePlayers = players.filter(p => p.active);
 
@@ -85,6 +85,7 @@ export function generateRounds(players: Player[], existingMatches: Match[]): Mat
 
     newMatches.push({
       id: uuidv4(),
+      tournament_id: tournamentId,
       round: roundNum,
       team1: [p1.id, p2.id],
       team2: [p3.id, p4.id],
