@@ -48,7 +48,7 @@ export function Leaderboard() {
               <th>Player</th>
               <th style={{ textAlign: 'center' }}>Wins</th>
               <th style={{ textAlign: 'center' }}>Losses</th>
-              <th style={{ textAlign: 'center', display: 'none' }} className="md:table-cell">Played</th>
+              <th style={{ textAlign: 'center' }}>Total Play</th>
               <th style={{ textAlign: 'center' }}>Points</th>
               <th style={{ textAlign: 'center' }}>Diff</th>
             </tr>
@@ -64,7 +64,7 @@ export function Leaderboard() {
                 </td>
                 <td style={{ textAlign: 'center', color: 'var(--accent-primary)', fontWeight: 600 }}>{entry.wins}</td>
                 <td style={{ textAlign: 'center', color: 'var(--danger)' }}>{entry.losses}</td>
-                <td style={{ textAlign: 'center', display: 'none', color: 'var(--text-muted)' }} className="md:table-cell">{entry.matchesPlayed}</td>
+                <td style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{entry.matchesPlayed}</td>
                 <td style={{ textAlign: 'center', fontWeight: 600 }}>{entry.totalPoints}</td>
                 <td style={{ textAlign: 'center', color: entry.pointDiff > 0 ? 'var(--accent-primary)' : entry.pointDiff < 0 ? 'var(--danger)' : 'inherit' }}>
                   {entry.pointDiff > 0 ? '+' : ''}{entry.pointDiff}

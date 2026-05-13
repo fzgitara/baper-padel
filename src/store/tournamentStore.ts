@@ -18,6 +18,7 @@ interface TournamentActions {
   updateScore: (matchId: string, score1: number, score2: number) => Promise<void>;
   generateNextRound: () => Promise<void>;
   randomizePendingMatches: () => Promise<void>;
+  swapMatchPlayer: (matchId: string, oldPlayerId: string, newPlayerId: string) => Promise<void>;
   finishTournament: () => Promise<void>;
   resetTournament: () => Promise<void>;
 }
@@ -327,6 +328,70 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       score2, 
       status: 'completed' 
     }).eq('id', matchId);
+  },
+
+  swapMatchPlayer: async (matchId, oldPlayerId, newPlayerId) => {
+    if (oldPlayerId === newPlayerId) return;
+
+    const state = get();
+    const activeId = state.activeTournamentId;
+    if (!activeId) return;
+
+    const t = state.tournaments.find(x => x.id === activeId);
+    if (!t) return;
+
+    const matchesToUpdate: Match[] = [];
+
+    const newMatches = t.matches.map(m => {
+      if (m.status !== 'pending') return m;
+
+      const match = { ...m, team1: [...m.team1], team2: [...m.team2] };
+      let changed = false;
+
+      if (match.id === matchId) {
+        const oldInTeam1 = match.team1.indexOf(oldPlayerId);
+        const oldInTeam2 = match.team2.indexOf(oldPlayerId);
+        const newInTeam1 = match.team1.indexOf(newPlayerId);
+        const newInTeam2 = match.team2.indexOf(newPlayerId);
+
+        if (newInTeam1 !== -1 || newInTeam2 !== -1) {
+          // Swap within the same match
+          if (oldInTeam1 !== -1) match.team1[oldInTeam1] = newPlayerId;
+          if (oldInTeam2 !== -1) match.team2[oldInTeam2] = newPlayerId;
+          if (newInTeam1 !== -1) match.team1[newInTeam1] = oldPlayerId;
+          if (newInTeam2 !== -1) match.team2[newInTeam2] = oldPlayerId;
+          changed = true;
+        } else {
+          // Just replace
+          if (oldInTeam1 !== -1) { match.team1[oldInTeam1] = newPlayerId; changed = true; }
+          if (oldInTeam2 !== -1) { match.team2[oldInTeam2] = newPlayerId; changed = true; }
+        }
+      } else if (match.team1.includes(newPlayerId) || match.team2.includes(newPlayerId)) {
+        // Swap newPlayer with oldPlayer in another pending match
+        const newInTeam1 = match.team1.indexOf(newPlayerId);
+        const newInTeam2 = match.team2.indexOf(newPlayerId);
+        if (newInTeam1 !== -1) { match.team1[newInTeam1] = oldPlayerId; changed = true; }
+        if (newInTeam2 !== -1) { match.team2[newInTeam2] = oldPlayerId; changed = true; }
+      }
+
+      if (changed) matchesToUpdate.push(match);
+      return match;
+    });
+
+    if (matchesToUpdate.length === 0) return;
+
+    // Optimistic
+    set((s) => ({
+      tournaments: s.tournaments.map(curr => {
+        if (curr.id !== activeId) return curr;
+        return { ...curr, matches: newMatches };
+      })
+    }));
+
+    // Sync
+    for (const m of matchesToUpdate) {
+      await supabase.from('matches').update({ team1: m.team1, team2: m.team2 }).eq('id', m.id);
+    }
   },
 
   finishTournament: async () => {

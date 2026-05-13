@@ -3,7 +3,7 @@ import { useTournamentStore } from '../store/tournamentStore';
 import { Swords, Check, Play, Shuffle } from 'lucide-react';
 
 export function MatchList() {
-  const { tournaments, activeTournamentId, updateScore, generateNextRound, randomizePendingMatches } = useTournamentStore();
+  const { tournaments, activeTournamentId, updateScore, generateNextRound, randomizePendingMatches, swapMatchPlayer } = useTournamentStore();
   const activeTournament = tournaments.find(t => t.id === activeTournamentId);
 
   if (!activeTournament) return null;
@@ -60,8 +60,10 @@ export function MatchList() {
               <MatchCard
                 key={match.id}
                 match={match}
+                players={players.filter(p => p.active)}
                 getPlayerName={getPlayerName}
                 onSave={(s1: number, s2: number) => updateScore(match.id, s1, s2)}
+                onSwap={swapMatchPlayer}
               />
             ))}
           </div>
@@ -114,7 +116,7 @@ export function MatchList() {
   );
 }
 
-function MatchCard({ match, getPlayerName, onSave }: any) {
+function MatchCard({ match, players, onSave, onSwap }: any) {
   const [s1, setS1] = useState('');
   const [s2, setS2] = useState('');
 
@@ -152,6 +154,37 @@ function MatchCard({ match, getPlayerName, onSave }: any) {
     }
   };
 
+  const renderPlayerSelect = (playerId: string, align: 'left' | 'right') => {
+    return (
+      <select 
+        value={playerId}
+        onChange={(e) => onSwap(match.id, playerId, e.target.value)}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          borderBottom: '1px dashed rgba(255,255,255,0.2)',
+          color: 'inherit',
+          fontSize: '1.1rem',
+          fontWeight: 500,
+          outline: 'none',
+          cursor: 'pointer',
+          textAlign: align,
+          width: '100%',
+          padding: '2px 0',
+          appearance: 'none',
+          direction: align === 'right' ? 'rtl' : 'ltr'
+        }}
+        title="Click to swap player"
+      >
+        {players.map((p: any) => (
+          <option key={p.id} value={p.id} style={{ color: '#000', direction: 'ltr' }}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+    );
+  };
+
   return (
     <div style={{
       background: 'rgba(255,255,255,0.02)',
@@ -170,8 +203,8 @@ function MatchCard({ match, getPlayerName, onSave }: any) {
       <div className="flex items-center gap-4">
         {/* Team 1 */}
         <div style={{ flex: 1, textAlign: 'right' }}>
-          <div style={{ fontWeight: 500, fontSize: '1.1rem' }}>{getPlayerName(match.team1[0])}</div>
-          <div style={{ fontWeight: 500, fontSize: '1.1rem' }}>{getPlayerName(match.team1[1])}</div>
+          <div>{renderPlayerSelect(match.team1[0], 'right')}</div>
+          <div style={{ marginTop: '8px' }}>{renderPlayerSelect(match.team1[1], 'right')}</div>
         </div>
 
         {/* Scores */}
@@ -199,8 +232,8 @@ function MatchCard({ match, getPlayerName, onSave }: any) {
 
         {/* Team 2 */}
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 500, fontSize: '1.1rem' }}>{getPlayerName(match.team2[0])}</div>
-          <div style={{ fontWeight: 500, fontSize: '1.1rem' }}>{getPlayerName(match.team2[1])}</div>
+          <div>{renderPlayerSelect(match.team2[0], 'left')}</div>
+          <div style={{ marginTop: '8px' }}>{renderPlayerSelect(match.team2[1], 'left')}</div>
         </div>
       </div>
 
