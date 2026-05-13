@@ -4,7 +4,7 @@ import { UserPlus, UserMinus, Users } from 'lucide-react';
 
 export function PlayerManagement() {
   const [newPlayerName, setNewPlayerName] = useState('');
-  const { tournaments, activeTournamentId, addPlayer, removePlayer } = useTournamentStore();
+  const { tournaments, activeTournamentId, addPlayer, removePlayer, globalPlayers } = useTournamentStore();
   const activeTournament = tournaments.find(t => t.id === activeTournamentId);
 
   if (!activeTournament) return null;
@@ -34,11 +34,17 @@ export function PlayerManagement() {
       <form onSubmit={handleAdd} className="flex gap-2" style={{ marginBottom: '24px' }}>
         <input 
           type="text" 
+          list="global-players"
           className="input" 
           placeholder="Enter player name..." 
           value={newPlayerName}
           onChange={(e) => setNewPlayerName(e.target.value)}
         />
+        <datalist id="global-players">
+          {globalPlayers.map(p => (
+            <option key={p.id} value={p.name} />
+          ))}
+        </datalist>
         <button type="submit" className="btn btn-primary" disabled={!newPlayerName.trim()}>
           <UserPlus size={18} />
           Add

@@ -4,7 +4,7 @@ import { calculateLeaderboard } from '../lib/leaderboard';
 import { Trophy, ArrowUpDown } from 'lucide-react';
 
 export function Leaderboard() {
-  const [sortBy, setSortBy] = useState<'wins' | 'points'>('wins');
+  const [sortBy, setSortBy] = useState<'wins' | 'points' | 'diff'>('wins');
   const { tournaments, activeTournamentId } = useTournamentStore();
   const activeTournament = tournaments.find(t => t.id === activeTournamentId);
 
@@ -32,11 +32,11 @@ export function Leaderboard() {
         
         <button 
           className="btn btn-outline" 
-          onClick={() => setSortBy(prev => prev === 'wins' ? 'points' : 'wins')}
+          onClick={() => setSortBy(prev => prev === 'wins' ? 'points' : prev === 'points' ? 'diff' : 'wins')}
           title="Toggle Sorting"
         >
           <ArrowUpDown size={16} />
-          Sorted by: {sortBy === 'wins' ? 'Wins' : 'Total Points'}
+          Sorted by: {sortBy === 'wins' ? 'Wins' : sortBy === 'points' ? 'Total Points' : 'Point Difference'}
         </button>
       </div>
 
@@ -55,12 +55,11 @@ export function Leaderboard() {
           </thead>
           <tbody>
             {leaderboard.map((entry, idx) => (
-              <tr key={entry.player.id} style={{ opacity: entry.player.active ? 1 : 0.5 }}>
+              <tr key={entry.player.id}>
                 <td style={{ textAlign: 'center', fontWeight: 600 }}>{idx + 1}</td>
                 <td>
                   <div className="flex items-center gap-2">
                     <span style={{ fontWeight: 500 }}>{entry.player.name}</span>
-                    {!entry.player.active && <span className="badge badge-pending" style={{ fontSize: '0.6rem' }}>Removed</span>}
                   </div>
                 </td>
                 <td style={{ textAlign: 'center', color: 'var(--accent-primary)', fontWeight: 600 }}>{entry.wins}</td>
@@ -77,7 +76,7 @@ export function Leaderboard() {
       </div>
       
       <div style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-        Tie-breakers applied: {sortBy === 'wins' ? 'Wins > Points > Diff' : 'Points > Wins > Diff'}
+        Tie-breakers applied: {sortBy === 'wins' ? 'Wins > Diff > Points' : sortBy === 'points' ? 'Points > Wins > Diff' : 'Diff > Wins > Points'}
       </div>
     </div>
   );

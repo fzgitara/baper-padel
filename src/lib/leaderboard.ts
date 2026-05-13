@@ -12,7 +12,7 @@ export interface LeaderboardEntry {
 export function calculateLeaderboard(
   players: Player[],
   matches: Match[],
-  sortBy: 'wins' | 'points' = 'wins'
+  sortBy: 'wins' | 'points' | 'diff' = 'wins'
 ): LeaderboardEntry[] {
   const stats: Record<string, LeaderboardEntry> = {};
 
@@ -57,12 +57,16 @@ export function calculateLeaderboard(
   entries.sort((a, b) => {
     if (sortBy === 'wins') {
       if (b.wins !== a.wins) return b.wins - a.wins;
-      if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
-      return b.pointDiff - a.pointDiff;
-    } else {
+      if (b.pointDiff !== a.pointDiff) return b.pointDiff - a.pointDiff;
+      return b.totalPoints - a.totalPoints;
+    } else if (sortBy === 'points') {
       if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
       if (b.wins !== a.wins) return b.wins - a.wins;
       return b.pointDiff - a.pointDiff;
+    } else {
+      if (b.pointDiff !== a.pointDiff) return b.pointDiff - a.pointDiff;
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      return b.totalPoints - a.totalPoints;
     }
   });
 

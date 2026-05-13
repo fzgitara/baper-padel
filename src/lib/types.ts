@@ -1,8 +1,12 @@
 export interface Player {
   id: string;
-  tournament_id: string;
   name: string;
   active: boolean;
+}
+
+export interface GlobalPlayer {
+  id: string;
+  name: string;
 }
 
 export interface Match {
@@ -20,6 +24,7 @@ export interface Tournament {
   id: string;
   name: string;
   createdAt: number;
+  totalCourts: number;
   players: Player[];
   matches: Match[];
   status: 'setup' | 'active' | 'completed';
@@ -27,6 +32,7 @@ export interface Tournament {
 
 export interface TournamentStoreState {
   tournaments: Tournament[];
+  globalPlayers: GlobalPlayer[];
   activeTournamentId: string | null;
   isInitialized: boolean;
 }

@@ -4,13 +4,15 @@ import { Trophy, Plus, Calendar, Trash2 } from 'lucide-react';
 
 export function HomeScreen() {
   const [newTournamentName, setNewTournamentName] = useState('');
+  const [totalCourts, setTotalCourts] = useState(1);
   const { tournaments, createTournament, setActiveTournament, deleteTournament } = useTournamentStore();
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (newTournamentName.trim()) {
-      createTournament(newTournamentName.trim());
+      createTournament(newTournamentName.trim(), totalCourts);
       setNewTournamentName('');
+      setTotalCourts(1);
     }
   };
 
@@ -30,14 +32,26 @@ export function HomeScreen() {
           <Plus className="text-gradient" size={24} />
           Create New Tournament
         </h2>
-        <form onSubmit={handleCreate} className="flex gap-4">
+        <form onSubmit={handleCreate} className="flex gap-4" style={{ flexWrap: 'wrap' }}>
           <input 
             type="text" 
             className="input" 
+            style={{ flex: '1 1 300px' }}
             placeholder="Tournament Name (e.g. Summer Cup 2026)" 
             value={newTournamentName}
             onChange={(e) => setNewTournamentName(e.target.value)}
           />
+          <div className="flex items-center gap-2">
+            <span style={{ color: 'var(--text-muted)' }}>Courts:</span>
+            <input 
+              type="number" 
+              className="input" 
+              style={{ width: '70px', textAlign: 'center' }}
+              min="1"
+              value={totalCourts}
+              onChange={(e) => setTotalCourts(Math.max(1, parseInt(e.target.value) || 1))}
+            />
+          </div>
           <button type="submit" className="btn btn-primary" disabled={!newTournamentName.trim()}>
             Create
           </button>
@@ -71,7 +85,7 @@ export function HomeScreen() {
                   <div className="flex items-center gap-4 text-muted" style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                     <span className="flex items-center gap-1">
                       <Calendar size={14} />
-                      {new Date(t.createdAt).toLocaleDateString()}
+                      {new Date(t.createdAt).toLocaleDateString('en-GB')}
                     </span>
                     <span className={`badge ${t.status === 'active' ? 'badge-completed' : 'badge-pending'}`}>
                       {t.status.toUpperCase()}

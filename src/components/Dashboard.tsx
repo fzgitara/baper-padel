@@ -1,13 +1,13 @@
 import { useTournamentStore } from '../store/tournamentStore';
-import { Play, RotateCcw, Activity } from 'lucide-react';
+import { Play, RotateCcw, Activity, CheckCircle } from 'lucide-react';
 
 export function Dashboard() {
-  const { tournaments, activeTournamentId, startTournament, resetTournament } = useTournamentStore();
+  const { tournaments, activeTournamentId, startTournament, resetTournament, updateTotalCourts, finishTournament } = useTournamentStore();
   const activeTournament = tournaments.find(t => t.id === activeTournamentId);
 
   if (!activeTournament) return null;
 
-  const { status, players, matches } = activeTournament;
+  const { status, players, matches, totalCourts } = activeTournament;
   const activePlayers = players.filter(p => p.active).length;
   const totalMatches = matches.length;
   const completedMatches = matches.filter(m => m.status === 'completed').length;
@@ -30,6 +30,27 @@ export function Dashboard() {
           <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent-primary)' }}>{activePlayers}</div>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Active Players</div>
         </div>
+        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '12px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <input 
+            type="number"
+            value={totalCourts}
+            onChange={(e) => updateTotalCourts(Math.max(1, parseInt(e.target.value) || 1))}
+            style={{ 
+              background: 'transparent', 
+              border: 'none', 
+              color: '#fff', 
+              fontSize: '2rem', 
+              fontWeight: 700, 
+              width: '60px', 
+              textAlign: 'center',
+              outline: 'none',
+              borderBottom: '2px solid rgba(255,255,255,0.2)'
+            }}
+            min="1"
+            title="Edit total courts"
+          />
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', marginTop: '4px' }}>Courts</div>
+        </div>
         <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
           <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent-secondary)' }}>{completedMatches} / {totalMatches}</div>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Matches Played</div>
@@ -49,6 +70,21 @@ export function Dashboard() {
           </button>
         )}
         
+        {status === 'active' && (
+          <button 
+            className="btn btn-primary" 
+            onClick={() => {
+              if (window.confirm('Are you sure you want to finish the tournament? No more matches can be generated.')) {
+                finishTournament();
+              }
+            }}
+            style={{ flex: 1 }}
+          >
+            <CheckCircle size={18} />
+            Finish Tournament
+          </button>
+        )}
+
         {status !== 'setup' && (
           <button 
             className="btn btn-danger" 
@@ -57,9 +93,10 @@ export function Dashboard() {
                 resetTournament();
               }
             }}
+            style={{ flex: 1 }}
           >
             <RotateCcw size={18} />
-            Reset Tournament
+            Reset
           </button>
         )}
       </div>

@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { Match, Player } from './types';
 
-export function generateRounds(players: Player[], existingMatches: Match[], tournamentId: string): Match[] {
+export function generateRounds(players: Player[], existingMatches: Match[], tournamentId: string, totalCourts: number): Match[] {
   const completedMatches = existingMatches.filter(m => m.status === 'completed');
   const activePlayers = players.filter(p => p.active);
 
@@ -53,7 +53,8 @@ export function generateRounds(players: Player[], existingMatches: Match[], tour
     return Math.random() - 0.5;
   });
 
-  const numToPlay = Math.floor(sortedPlayers.length / 4) * 4;
+  const maxPlayers = totalCourts * 4;
+  const numToPlay = Math.min(Math.floor(sortedPlayers.length / 4) * 4, maxPlayers);
   const playersToPlay = sortedPlayers.slice(0, numToPlay);
 
   const roundNum = completedMatches.length > 0 
