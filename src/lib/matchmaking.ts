@@ -9,92 +9,202 @@ export function generateRounds(players: Player[], existingMatches: Match[], tour
     return completedMatches;
   }
 
-  const newMatches: Match[] = [];
+  const N = activePlayers.length;
+  const targetPartnershipsCount = (N * (N - 1)) / 2;
   
-  // Calculate matches played per active player to prioritize those with fewest matches
-  const playedCounts: Record<string, number> = {};
-  activePlayers.forEach(p => playedCounts[p.id] = 0);
+  let currentMatches = [...completedMatches];
+  const getPairKey = (id1: string, id2: string) => [id1, id2].sort().join('-');
+
+  const getActivePartnershipsCount = (matchesList: Match[]) => {
+    const activeIds = new Set(activePlayers.map(p => p.id));
+    const covered = new Set<string>();
+    matchesList.forEach(m => {
+      const p1 = m.team1[0];
+      const p2 = m.team1[1];
+      const p3 = m.team2[0];
+      const p4 = m.team2[1];
+      if (activeIds.has(p1) && activeIds.has(p2)) {
+        covered.add(getPairKey(p1, p2));
+      }
+      if (activeIds.has(p3) && activeIds.has(p4)) {
+        covered.add(getPairKey(p3, p4));
+      }
+    });
+    return covered.size;
+  };
+
+  const maxRounds = Math.max(50, N * 4);
+  const matchesPerRound = Math.min(totalCourts, Math.floor(N / 4));
   
-  completedMatches.forEach(m => {
+  if (matchesPerRound < 1) {
+    return completedMatches;
+  }
+
+  const startRound = completedMatches.length > 0 
+    ? Math.max(...completedMatches.map(m => m.round)) + 1 
+    : 1;
+
+  for (let r = startRound; r <= startRound + maxRounds; r++) {
+    const coveredCount = getActivePartnershipsCount(currentMatches);
+    if (coveredCount >= targetPartnershipsCount) {
+      break;
+    }
+
+    // Generate matches for this round
+    const playedCounts: Record<string, number> = {};
+    activePlayers.forEach(p => playedCounts[p.id] = 0);
+    currentMatches.forEach(m => {
+      [...m.team1, ...m.team2].forEach(pId => {
+        if (playedCounts[pId] !== undefined) {
+          playedCounts[pId]++;
+        }
+      });
+    });
+
+    const partnerships: Record<string, number> = {};
+    currentMatches.forEach(m => {
+      const k1 = getPairKey(m.team1[0], m.team1[1]);
+      const k2 = getPairKey(m.team2[0], m.team2[1]);
+      partnerships[k1] = (partnerships[k1] || 0) + 1;
+      partnerships[k2] = (partnerships[k2] || 0) + 1;
+    });
+
+    // Sort players primarily by fewest matches played, and secondarily random
+    const sortedPlayers = [...activePlayers].sort((a, b) => {
+      if (playedCounts[a.id] !== playedCounts[b.id]) {
+        return playedCounts[a.id] - playedCounts[b.id];
+      }
+      return Math.random() - 0.5;
+    });
+
+    const numToPlay = matchesPerRound * 4;
+    const playersToPlay = sortedPlayers.slice(0, numToPlay);
+    
+    let available = [...playersToPlay];
+    const roundMatches: Match[] = [];
+
+    while (available.length >= 4) {
+      const p1 = available.shift()!;
+      
+      // Find p2: minimize past partnerships
+      available.sort((a, b) => {
+        const aScore = partnerships[getPairKey(p1.id, a.id)] || 0;
+        const bScore = partnerships[getPairKey(p1.id, b.id)] || 0;
+        return aScore - bScore;
+      });
+      const p2 = available.shift()!;
+
+      const p3 = available.shift()!;
+      
+      // Find p4: minimize past partnerships with p3
+      available.sort((a, b) => {
+        const aScore = partnerships[getPairKey(p3.id, a.id)] || 0;
+        const bScore = partnerships[getPairKey(p3.id, b.id)] || 0;
+        return aScore - bScore;
+      });
+      const p4 = available.shift()!;
+
+      roundMatches.push({
+        id: uuidv4(),
+        tournament_id: tournamentId,
+        round: r,
+        team1: [p1.id, p2.id],
+        team2: [p3.id, p4.id],
+        score1: null,
+        score2: null,
+        status: 'pending'
+      });
+    }
+
+    if (roundMatches.length === 0) {
+      break;
+    }
+
+    currentMatches.push(...roundMatches);
+  }
+
+  return currentMatches;
+}
+
+export function generateSingleMatch(players: Player[], existingMatches: Match[], tournamentId: string): Match | null {
+  const activePlayers = players.filter(p => p.active);
+  if (activePlayers.length < 4) {
+    return null;
+  }
+
+  const completedCounts: Record<string, number> = {};
+  const totalCounts: Record<string, number> = {};
+  
+  activePlayers.forEach(p => {
+    completedCounts[p.id] = 0;
+    totalCounts[p.id] = 0;
+  });
+
+  existingMatches.forEach(m => {
     [...m.team1, ...m.team2].forEach(pId => {
-      if (playedCounts[pId] !== undefined) {
-        playedCounts[pId]++;
+      if (totalCounts[pId] !== undefined) {
+        totalCounts[pId]++;
+        if (m.status === 'completed') {
+          completedCounts[pId]++;
+        }
       }
     });
   });
 
-  // Track partnerships to avoid repeating teams
-  const partnerships: Record<string, number> = {};
   const getPairKey = (id1: string, id2: string) => [id1, id2].sort().join('-');
-  
-  completedMatches.forEach(m => {
+  const partnerships: Record<string, number> = {};
+  existingMatches.forEach(m => {
     const k1 = getPairKey(m.team1[0], m.team1[1]);
     const k2 = getPairKey(m.team2[0], m.team2[1]);
     partnerships[k1] = (partnerships[k1] || 0) + 1;
     partnerships[k2] = (partnerships[k2] || 0) + 1;
   });
 
-  // Track opponents to avoid repeating opponents
-  const opponents: Record<string, number> = {};
-  completedMatches.forEach(m => {
-    m.team1.forEach(p1 => {
-      m.team2.forEach(p2 => {
-        const k = getPairKey(p1, p2);
-        opponents[k] = (opponents[k] || 0) + 1;
-      });
-    });
-  });
-
-  // Sort players primarily by fewest matches played, and secondarily random
   const sortedPlayers = [...activePlayers].sort((a, b) => {
-    if (playedCounts[a.id] !== playedCounts[b.id]) {
-      return playedCounts[a.id] - playedCounts[b.id];
+    if (completedCounts[a.id] !== completedCounts[b.id]) {
+      return completedCounts[a.id] - completedCounts[b.id];
+    }
+    if (totalCounts[a.id] !== totalCounts[b.id]) {
+      return totalCounts[a.id] - totalCounts[b.id];
     }
     return Math.random() - 0.5;
   });
 
-  const maxPlayers = totalCourts * 4;
-  const numToPlay = Math.min(Math.floor(sortedPlayers.length / 4) * 4, maxPlayers);
-  const playersToPlay = sortedPlayers.slice(0, numToPlay);
-
-  const roundNum = completedMatches.length > 0 
-    ? Math.max(...completedMatches.map(m => m.round)) + 1 
-    : 1;
-
+  const playersToPlay = sortedPlayers.slice(0, 4);
   let available = [...playersToPlay];
 
-  while (available.length >= 4) {
-    const p1 = available.shift()!;
-    
-    // Find p2: minimize past partnerships
-    available.sort((a, b) => {
-      const aScore = partnerships[getPairKey(p1.id, a.id)] || 0;
-      const bScore = partnerships[getPairKey(p1.id, b.id)] || 0;
-      return aScore - bScore;
-    });
-    const p2 = available.shift()!;
+  const p1 = available.shift()!;
+  
+  // Find p2: minimize past partnerships
+  available.sort((a, b) => {
+    const aScore = partnerships[getPairKey(p1.id, a.id)] || 0;
+    const bScore = partnerships[getPairKey(p1.id, b.id)] || 0;
+    return aScore - bScore;
+  });
+  const p2 = available.shift()!;
 
-    const p3 = available.shift()!;
-    
-    // Find p4: minimize past partnerships with p3
-    available.sort((a, b) => {
-      const aScore = partnerships[getPairKey(p3.id, a.id)] || 0;
-      const bScore = partnerships[getPairKey(p3.id, b.id)] || 0;
-      return aScore - bScore;
-    });
-    const p4 = available.shift()!;
+  const p3 = available.shift()!;
+  
+  // Find p4: minimize past partnerships with p3
+  available.sort((a, b) => {
+    const aScore = partnerships[getPairKey(p3.id, a.id)] || 0;
+    const bScore = partnerships[getPairKey(p3.id, b.id)] || 0;
+    return aScore - bScore;
+  });
+  const p4 = available.shift()!;
 
-    newMatches.push({
-      id: uuidv4(),
-      tournament_id: tournamentId,
-      round: roundNum,
-      team1: [p1.id, p2.id],
-      team2: [p3.id, p4.id],
-      score1: null,
-      score2: null,
-      status: 'pending'
-    });
-  }
+  const roundNum = existingMatches.length > 0
+    ? Math.max(...existingMatches.map(m => m.round)) + 1
+    : 1;
 
-  return [...completedMatches, ...newMatches];
+  return {
+    id: uuidv4(),
+    tournament_id: tournamentId,
+    round: roundNum,
+    team1: [p1.id, p2.id],
+    team2: [p3.id, p4.id],
+    score1: null,
+    score2: null,
+    status: 'pending'
+  };
 }

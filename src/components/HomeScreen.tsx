@@ -1,18 +1,21 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTournamentStore } from '../store/tournamentStore';
 import { Trophy, Plus, Calendar, Trash2 } from 'lucide-react';
 
 export function HomeScreen() {
+  const navigate = useNavigate();
   const [newTournamentName, setNewTournamentName] = useState('');
   const [totalCourts, setTotalCourts] = useState(1);
-  const { tournaments, createTournament, setActiveTournament, deleteTournament } = useTournamentStore();
+  const { tournaments, createTournament, deleteTournament } = useTournamentStore();
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newTournamentName.trim()) {
-      createTournament(newTournamentName.trim(), totalCourts);
+      const id = await createTournament(newTournamentName.trim(), totalCourts);
       setNewTournamentName('');
       setTotalCourts(1);
+      navigate(`/tournament/${id}`);
     }
   };
 
@@ -76,7 +79,7 @@ export function HomeScreen() {
                 key={t.id} 
                 className="glass-card flex justify-between items-center" 
                 style={{ cursor: 'pointer', padding: '20px', transition: 'all 0.2s ease' }}
-                onClick={() => setActiveTournament(t.id)}
+                onClick={() => navigate(`/tournament/${t.id}`)}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
               >

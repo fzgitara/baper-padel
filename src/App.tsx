@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useTournamentStore } from './store/tournamentStore';
 import { Dashboard } from './components/Dashboard';
 import { PlayerManagement } from './components/PlayerManagement';
@@ -7,32 +8,25 @@ import { Leaderboard } from './components/Leaderboard';
 import { HomeScreen } from './components/HomeScreen';
 import { ArrowLeft } from 'lucide-react';
 
-function App() {
+function TournamentView() {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'matches' | 'leaderboard'>('dashboard');
-  const { activeTournamentId, tournaments, setActiveTournament, init, isInitialized } = useTournamentStore();
-
+  const { tournaments, setActiveTournament } = useTournamentStore();
+  
   useEffect(() => {
-    if (!isInitialized) {
-      init();
-    }
-  }, [init, isInitialized]);
+    setActiveTournament(id || null);
+    
+    return () => {
+      // Clear active tournament when leaving
+      setActiveTournament(null);
+    };
+  }, [id, setActiveTournament]);
 
-  if (!isInitialized) {
-    return (
-      <div className="container flex items-center justify-center" style={{ minHeight: '100vh', display: 'flex' }}>
-        <div className="text-gradient" style={{ fontSize: '1.5rem', fontWeight: 600 }}>Loading Tournaments...</div>
-      </div>
-    );
-  }
-
-  if (!activeTournamentId) {
-    return <HomeScreen />;
-  }
-
-  const activeTournament = tournaments.find(t => t.id === activeTournamentId);
+  const activeTournament = tournaments.find(t => t.id === id);
 
   if (!activeTournament) {
-    return <HomeScreen />;
+    return <Navigate to="/" replace />;
   }
 
   return (
@@ -42,7 +36,9 @@ function App() {
           <button 
             className="btn btn-outline" 
             style={{ marginBottom: '16px', padding: '6px 12px', fontSize: '0.85rem' }}
-            onClick={() => setActiveTournament(null)}
+            onClick={() => {
+              navigate('/');
+            }}
           >
             <ArrowLeft size={16} />
             Back to Home
@@ -102,6 +98,32 @@ function App() {
 
       </div>
     </div>
+  );
+}
+
+function App() {
+  const { init, isInitialized } = useTournamentStore();
+
+  useEffect(() => {
+    if (!isInitialized) {
+      init();
+    }
+  }, [init, isInitialized]);
+
+  if (!isInitialized) {
+    return (
+      <div className="container flex items-center justify-center" style={{ minHeight: '100vh', display: 'flex' }}>
+        <div className="text-gradient" style={{ fontSize: '1.5rem', fontWeight: 600 }}>Loading Tournaments...</div>
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<HomeScreen />} />
+      <Route path="/tournament/:id" element={<TournamentView />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 

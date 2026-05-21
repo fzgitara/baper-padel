@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useTournamentStore } from '../store/tournamentStore';
-import { Swords, Check, Play, Shuffle } from 'lucide-react';
+import { Swords, Check, Shuffle, Play } from 'lucide-react';
 
 export function MatchList() {
-  const { tournaments, activeTournamentId, updateScore, generateNextRound, randomizePendingMatches, swapMatchPlayer } = useTournamentStore();
+  const { tournaments, activeTournamentId, updateScore, randomizePendingMatches, swapMatchPlayer, generateSingleMatch } = useTournamentStore();
   const activeTournament = tournaments.find(t => t.id === activeTournamentId);
 
   if (!activeTournament) return null;
@@ -14,6 +14,15 @@ export function MatchList() {
   const pendingMatches = matches.filter(m => m.status === 'pending');
   const completedMatches = matches.filter(m => m.status === 'completed');
 
+  // Group pending matches by round
+  const pendingByRound = pendingMatches.reduce((acc, match) => {
+    if (!acc[match.round]) acc[match.round] = [];
+    acc[match.round].push(match);
+    return acc;
+  }, {} as Record<number, typeof matches>);
+
+  const pendingRounds = Object.keys(pendingByRound).map(Number).sort((a, b) => a - b); // oldest/first rounds first
+
   // Group completed matches by round
   const completedByRound = completedMatches.reduce((acc, match) => {
     if (!acc[match.round]) acc[match.round] = [];
@@ -22,8 +31,6 @@ export function MatchList() {
   }, {} as Record<number, typeof matches>);
 
   const completedRounds = Object.keys(completedByRound).map(Number).sort((a, b) => b - a); // newest rounds first
-
-  const allPendingCompleted = pendingMatches.length === 0 && matches.length > 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -35,16 +42,16 @@ export function MatchList() {
           </h2>
 
           <div className="flex gap-2">
+            {status === 'active' && (
+              <button className="btn btn-primary" onClick={generateSingleMatch} title="Generate a single new match">
+                <Play size={16} />
+                <span>Generate Match</span>
+              </button>
+            )}
             {pendingMatches.length > 0 && status === 'active' && (
               <button className="btn btn-outline" onClick={randomizePendingMatches} title="Randomize players in pending matches">
                 <Shuffle size={16} />
                 <span className="hidden md:inline">Randomize</span>
-              </button>
-            )}
-            {allPendingCompleted && status === 'active' && (
-              <button className="btn btn-primary" onClick={generateNextRound}>
-                <Play size={16} />
-                Generate Next Round
               </button>
             )}
           </div>
@@ -52,19 +59,28 @@ export function MatchList() {
 
         {pendingMatches.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>
-            {status === 'active' ? 'All matches in current round are completed.' : 'Start the tournament to generate matches.'}
+            {status === 'active' ? 'All matches in the tournament are completed.' : 'Start the tournament to generate matches.'}
           </p>
         ) : (
-          <div className="grid gap-4">
-            {pendingMatches.map(match => (
-              <MatchCard
-                key={match.id}
-                match={match}
-                players={players.filter(p => p.active)}
-                getPlayerName={getPlayerName}
-                onSave={(s1: number, s2: number) => updateScore(match.id, s1, s2)}
-                onSwap={swapMatchPlayer}
-              />
+          <div className="flex flex-col gap-6">
+            {pendingRounds.map(roundNum => (
+              <div key={roundNum}>
+                <h3 className="text-muted" style={{ marginBottom: '12px', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  Round {roundNum}
+                </h3>
+                <div className="grid gap-4">
+                  {pendingByRound[roundNum].map(match => (
+                    <MatchCard
+                      key={match.id}
+                      match={match}
+                      players={players.filter(p => p.active)}
+                      getPlayerName={getPlayerName}
+                      onSave={(s1: number, s2: number) => updateScore(match.id, s1, s2)}
+                      onSwap={swapMatchPlayer}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}

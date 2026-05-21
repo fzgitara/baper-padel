@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import type { Player, Tournament, Match, TournamentStoreState } from '../lib/types';
-import { generateRounds } from '../lib/matchmaking';
+import { generateRounds, generateSingleMatch } from '../lib/matchmaking';
 import { supabase } from '../utils/supabase';
 
 interface TournamentActions {
   init: () => Promise<void>;
-  createTournament: (name: string, totalCourts: number) => Promise<void>;
+  createTournament: (name: string, totalCourts: number) => Promise<string>;
   deleteTournament: (id: string) => Promise<void>;
   setActiveTournament: (id: string | null) => void;
   updateTotalCourts: (courts: number) => Promise<void>;
@@ -18,6 +18,7 @@ interface TournamentActions {
   updateScore: (matchId: string, score1: number, score2: number) => Promise<void>;
   generateNextRound: () => Promise<void>;
   randomizePendingMatches: () => Promise<void>;
+  generateSingleMatch: () => Promise<void>;
   swapMatchPlayer: (matchId: string, oldPlayerId: string, newPlayerId: string) => Promise<void>;
   finishTournament: () => Promise<void>;
   resetTournament: () => Promise<void>;
@@ -101,6 +102,8 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       total_courts: totalCourts,
       status: 'setup'
     });
+
+    return id;
   },
 
   updateTotalCourts: async (courts) => {
@@ -147,12 +150,14 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       isNewGlobal = true;
     }
 
-    if (t.players.some(p => p.id === globalPlayer!.id)) {
-      return; // Already in tournament
+    const existingPlayer = t.players.find(p => p.id === globalPlayer!.id);
+    if (existingPlayer && existingPlayer.active) {
+      return; // Already active in tournament
     }
 
-    const newPlayer: Player = { id: globalPlayer.id, name: globalPlayer.name, active: true };
-    const newPlayers = [...t.players, newPlayer];
+    const newPlayers: Player[] = existingPlayer
+      ? t.players.map(p => p.id === globalPlayer!.id ? { ...p, active: true } : p)
+      : [...t.players, { id: globalPlayer!.id, name: globalPlayer!.name, active: true }];
     
     let newMatches = t.matches;
     let matchesToInsert: Match[] = [];
@@ -177,9 +182,9 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     if (isNewGlobal) {
       await supabase.from('players').insert(globalPlayer);
     }
-    await supabase.from('tournament_participants').insert({
+    await supabase.from('tournament_participants').upsert({
       tournament_id: activeId,
-      player_id: globalPlayer.id,
+      player_id: globalPlayer!.id,
       active: true
     });
 
@@ -302,6 +307,29 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     if (matchesToInsert.length > 0) {
       await supabase.from('matches').insert(matchesToInsert);
     }
+  },
+
+  generateSingleMatch: async () => {
+    const state = get();
+    const activeId = state.activeTournamentId;
+    if (!activeId) return;
+
+    const t = state.tournaments.find(x => x.id === activeId);
+    if (!t || t.status !== 'active') return;
+
+    const newMatch = generateSingleMatch(t.players, t.matches, activeId);
+    if (!newMatch) return;
+
+    // Optimistic
+    set((s) => ({
+      tournaments: s.tournaments.map(curr => {
+        if (curr.id !== activeId) return curr;
+        return { ...curr, matches: [...curr.matches, newMatch] };
+      })
+    }));
+
+    // Sync
+    await supabase.from('matches').insert(newMatch);
   },
 
   updateScore: async (matchId, score1, score2) => {
