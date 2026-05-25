@@ -7,7 +7,7 @@ export function Dashboard() {
 
   if (!activeTournament) return null;
 
-  const { status, players, matches, totalCourts } = activeTournament;
+  const { status, players, matches, totalCourts, format } = activeTournament;
   const activePlayers = players.filter(p => p.active).length;
   const totalMatches = matches.length;
   const completedMatches = matches.filter(m => m.status === 'completed').length;
@@ -20,9 +20,14 @@ export function Dashboard() {
           Tournament Status
         </h2>
         
-        <span className={`badge ${status === 'active' ? 'badge-completed' : 'badge-pending'}`}>
-          {status.toUpperCase()}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="badge" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-primary)', textTransform: 'capitalize', letterSpacing: '0.5px' }}>
+            {format}
+          </span>
+          <span className={`badge ${status === 'active' ? 'badge-completed' : 'badge-pending'}`}>
+            {status.toUpperCase()}
+          </span>
+        </div>
       </div>
 
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
@@ -54,6 +59,10 @@ export function Dashboard() {
         <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
           <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent-secondary)' }}>{completedMatches} / {totalMatches}</div>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Matches Played</div>
+        </div>
+        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'capitalize' }}>{format}</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Format</div>
         </div>
       </div>
 

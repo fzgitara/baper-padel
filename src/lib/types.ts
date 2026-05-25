@@ -28,6 +28,7 @@ export interface Tournament {
   players: Player[];
   matches: Match[];
   status: 'setup' | 'active' | 'completed';
+  format: 'americano' | 'mexicano';
 }
 
 export interface TournamentStoreState {

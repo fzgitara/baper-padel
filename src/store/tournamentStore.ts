@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import type { Player, Tournament, Match, TournamentStoreState } from '../lib/types';
-import { generateRounds, generateSingleMatch } from '../lib/matchmaking';
+import { generateRounds } from '../lib/matchmaking';
 import { supabase } from '../utils/supabase';
 
 interface TournamentActions {
   init: () => Promise<void>;
-  createTournament: (name: string, totalCourts: number) => Promise<string>;
+  createTournament: (name: string, totalCourts: number, format: 'americano' | 'mexicano') => Promise<string>;
   deleteTournament: (id: string) => Promise<void>;
   setActiveTournament: (id: string | null) => void;
   updateTotalCourts: (courts: number) => Promise<void>;
@@ -67,14 +67,15 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
         totalCourts: t.total_courts || 1,
         status: t.status,
         players: playersForT,
-        matches: dbMatches.filter((m: any) => m.tournament_id === t.id)
+        matches: dbMatches.filter((m: any) => m.tournament_id === t.id),
+        format: t.format || 'americano'
       };
     });
 
     set({ tournaments: assembledTournaments, globalPlayers: dbPlayers, isInitialized: true });
   },
 
-  createTournament: async (name, totalCourts) => {
+  createTournament: async (name, totalCourts, format) => {
     const id = uuidv4();
     const createdAt = Date.now();
     
@@ -86,7 +87,8 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       totalCourts,
       players: [],
       matches: [],
-      status: 'setup'
+      status: 'setup',
+      format
     };
 
     set((state) => ({ 
@@ -100,7 +102,8 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       name,
       created_at: createdAt,
       total_courts: totalCourts,
-      status: 'setup'
+      status: 'setup',
+      format
     });
 
     return id;
@@ -170,7 +173,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
         tournaments: s.tournaments.map(curr => {
           if (curr.id !== activeId) return curr;
           if (curr.status === 'active') {
-            newMatches = generateRounds(newPlayers, curr.matches, activeId, curr.totalCourts);
+            newMatches = generateRounds(newPlayers, curr.matches, activeId, curr.totalCourts, curr.format);
             matchesToInsert = newMatches.filter(m => !curr.matches.some(om => om.id === m.id));
           }
           return { ...curr, players: newPlayers, matches: newMatches };
@@ -213,7 +216,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       tournaments: s.tournaments.map(curr => {
         if (curr.id !== activeId) return curr;
         if (curr.status === 'active') {
-          newMatches = generateRounds(newPlayers, curr.matches, activeId, curr.totalCourts);
+          newMatches = generateRounds(newPlayers, curr.matches, activeId, curr.totalCourts, curr.format);
           matchesToInsert = newMatches.filter(m => !curr.matches.some(om => om.id === m.id));
         }
         return { ...curr, players: newPlayers, matches: newMatches };
@@ -239,7 +242,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     if (!t) return;
     if (t.players.filter(p => p.active).length < 4) return;
 
-    const newMatches = generateRounds(t.players, t.matches, activeId, t.totalCourts);
+    const newMatches = generateRounds(t.players, t.matches, activeId, t.totalCourts, t.format);
     const matchesToInsert = newMatches.filter(m => !t.matches.some(om => om.id === m.id));
 
     // Optimistic
@@ -265,7 +268,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     const t = state.tournaments.find(x => x.id === activeId);
     if (!t || t.status !== 'active') return;
 
-    const newMatches = generateRounds(t.players, t.matches, activeId, t.totalCourts);
+    const newMatches = generateRounds(t.players, t.matches, activeId, t.totalCourts, t.format);
     const matchesToInsert = newMatches.filter(m => !t.matches.some(om => om.id === m.id));
 
     // Optimistic
@@ -291,7 +294,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     if (!t || t.status !== 'active') return;
 
     const completedMatches = t.matches.filter(m => m.status === 'completed');
-    const newMatches = generateRounds(t.players, completedMatches, activeId, t.totalCourts);
+    const newMatches = generateRounds(t.players, completedMatches, activeId, t.totalCourts, t.format);
     const matchesToInsert = newMatches.filter(m => !completedMatches.some(om => om.id === m.id));
 
     // Optimistic
@@ -317,19 +320,25 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     const t = state.tournaments.find(x => x.id === activeId);
     if (!t || t.status !== 'active') return;
 
-    const newMatch = generateSingleMatch(t.players, t.matches, activeId);
-    if (!newMatch) return;
+    // Only allow generating when there are no pending matches
+    const hasPending = t.matches.some(m => m.status === 'pending');
+    if (hasPending) return;
+
+    // Use generateRounds so ALL matches for the next round are created at once
+    const newMatches = generateRounds(t.players, t.matches, activeId, t.totalCourts, t.format);
+    const matchesToInsert = newMatches.filter(m => !t.matches.some(om => om.id === m.id));
+    if (matchesToInsert.length === 0) return;
 
     // Optimistic
     set((s) => ({
       tournaments: s.tournaments.map(curr => {
         if (curr.id !== activeId) return curr;
-        return { ...curr, matches: [...curr.matches, newMatch] };
+        return { ...curr, matches: newMatches };
       })
     }));
 
     // Sync
-    await supabase.from('matches').insert(newMatch);
+    await supabase.from('matches').insert(matchesToInsert);
   },
 
   updateScore: async (matchId, score1, score2) => {
@@ -371,35 +380,28 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     const matchesToUpdate: Match[] = [];
 
     const newMatches = t.matches.map(m => {
+      if (m.id !== matchId) return m;
       if (m.status !== 'pending') return m;
 
       const match = { ...m, team1: [...m.team1], team2: [...m.team2] };
       let changed = false;
 
-      if (match.id === matchId) {
-        const oldInTeam1 = match.team1.indexOf(oldPlayerId);
-        const oldInTeam2 = match.team2.indexOf(oldPlayerId);
-        const newInTeam1 = match.team1.indexOf(newPlayerId);
-        const newInTeam2 = match.team2.indexOf(newPlayerId);
+      const oldInTeam1 = match.team1.indexOf(oldPlayerId);
+      const oldInTeam2 = match.team2.indexOf(oldPlayerId);
+      const newInTeam1 = match.team1.indexOf(newPlayerId);
+      const newInTeam2 = match.team2.indexOf(newPlayerId);
 
-        if (newInTeam1 !== -1 || newInTeam2 !== -1) {
-          // Swap within the same match
-          if (oldInTeam1 !== -1) match.team1[oldInTeam1] = newPlayerId;
-          if (oldInTeam2 !== -1) match.team2[oldInTeam2] = newPlayerId;
-          if (newInTeam1 !== -1) match.team1[newInTeam1] = oldPlayerId;
-          if (newInTeam2 !== -1) match.team2[newInTeam2] = oldPlayerId;
-          changed = true;
-        } else {
-          // Just replace
-          if (oldInTeam1 !== -1) { match.team1[oldInTeam1] = newPlayerId; changed = true; }
-          if (oldInTeam2 !== -1) { match.team2[oldInTeam2] = newPlayerId; changed = true; }
-        }
-      } else if (match.team1.includes(newPlayerId) || match.team2.includes(newPlayerId)) {
-        // Swap newPlayer with oldPlayer in another pending match
-        const newInTeam1 = match.team1.indexOf(newPlayerId);
-        const newInTeam2 = match.team2.indexOf(newPlayerId);
-        if (newInTeam1 !== -1) { match.team1[newInTeam1] = oldPlayerId; changed = true; }
-        if (newInTeam2 !== -1) { match.team2[newInTeam2] = oldPlayerId; changed = true; }
+      if (newInTeam1 !== -1 || newInTeam2 !== -1) {
+        // Swap within the same match
+        if (oldInTeam1 !== -1) match.team1[oldInTeam1] = newPlayerId;
+        if (oldInTeam2 !== -1) match.team2[oldInTeam2] = newPlayerId;
+        if (newInTeam1 !== -1) match.team1[newInTeam1] = oldPlayerId;
+        if (newInTeam2 !== -1) match.team2[newInTeam2] = oldPlayerId;
+        changed = true;
+      } else {
+        // Just replace
+        if (oldInTeam1 !== -1) { match.team1[oldInTeam1] = newPlayerId; changed = true; }
+        if (oldInTeam2 !== -1) { match.team2[oldInTeam2] = newPlayerId; changed = true; }
       }
 
       if (changed) matchesToUpdate.push(match);

@@ -7,14 +7,16 @@ export function HomeScreen() {
   const navigate = useNavigate();
   const [newTournamentName, setNewTournamentName] = useState('');
   const [totalCourts, setTotalCourts] = useState(1);
+  const [format, setFormat] = useState<'americano' | 'mexicano'>('americano');
   const { tournaments, createTournament, deleteTournament } = useTournamentStore();
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newTournamentName.trim()) {
-      const id = await createTournament(newTournamentName.trim(), totalCourts);
+      const id = await createTournament(newTournamentName.trim(), totalCourts, format);
       setNewTournamentName('');
       setTotalCourts(1);
+      setFormat('americano');
       navigate(`/tournament/${id}`);
     }
   };
@@ -23,7 +25,7 @@ export function HomeScreen() {
     <div className="container" style={{ maxWidth: '800px' }}>
       <header style={{ textAlign: 'center', marginBottom: '40px', paddingTop: '20px' }}>
         <h1 className="text-gradient" style={{ fontSize: '3.5rem', marginBottom: '8px' }}>
-          Padel Americano
+          Baper Pulang Padel App
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem' }}>
           Manage your tournaments dynamically
@@ -36,19 +38,31 @@ export function HomeScreen() {
           Create New Tournament
         </h2>
         <form onSubmit={handleCreate} className="flex gap-4" style={{ flexWrap: 'wrap' }}>
-          <input 
-            type="text" 
-            className="input" 
+          <input
+            type="text"
+            className="input"
             style={{ flex: '1 1 300px' }}
-            placeholder="Tournament Name (e.g. Summer Cup 2026)" 
+            placeholder="Tournament Name (e.g. Summer Cup 2026)"
             value={newTournamentName}
             onChange={(e) => setNewTournamentName(e.target.value)}
           />
           <div className="flex items-center gap-2">
+            <span style={{ color: 'var(--text-muted)' }}>Format:</span>
+            <select
+              className="input"
+              style={{ cursor: 'pointer', background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--border-light)', padding: '6px 12px' }}
+              value={format}
+              onChange={(e) => setFormat(e.target.value as 'americano' | 'mexicano')}
+            >
+              <option value="americano">Americano</option>
+              <option value="mexicano">Mexicano</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
             <span style={{ color: 'var(--text-muted)' }}>Courts:</span>
-            <input 
-              type="number" 
-              className="input" 
+            <input
+              type="number"
+              className="input"
               style={{ width: '70px', textAlign: 'center' }}
               min="1"
               value={totalCourts}
@@ -74,10 +88,10 @@ export function HomeScreen() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {tournaments.map(t => (
-              <div 
-                key={t.id} 
-                className="glass-card flex justify-between items-center" 
+            {tournaments.sort((a, b) => b.createdAt - a.createdAt).map(t => (
+              <div
+                key={t.id}
+                className="glass-card flex justify-between items-center"
                 style={{ cursor: 'pointer', padding: '20px', transition: 'all 0.2s ease' }}
                 onClick={() => navigate(`/tournament/${t.id}`)}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
@@ -93,12 +107,15 @@ export function HomeScreen() {
                     <span className={`badge ${t.status === 'active' ? 'badge-completed' : 'badge-pending'}`}>
                       {t.status.toUpperCase()}
                     </span>
+                    <span className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-primary)', textTransform: 'capitalize' }}>
+                      {t.format || 'americano'}
+                    </span>
                     <span>{t.players.filter(p => p.active).length} Players</span>
                   </div>
                 </div>
 
-                <button 
-                  className="btn btn-danger" 
+                <button
+                  className="btn btn-danger"
                   onClick={(e) => {
                     e.stopPropagation(); // prevent opening the tournament
                     if (window.confirm('Are you sure you want to delete this tournament?')) {

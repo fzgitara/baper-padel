@@ -172,7 +172,7 @@ function MatchCard({ match, players, onSave, onSwap }: any) {
 
   const renderPlayerSelect = (playerId: string, align: 'left' | 'right') => {
     return (
-      <select 
+      <select
         value={playerId}
         onChange={(e) => onSwap(match.id, playerId, e.target.value)}
         style={{
