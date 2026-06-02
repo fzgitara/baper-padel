@@ -11,8 +11,34 @@ export function MatchList() {
 
   const getPlayerName = (id: string) => players.find(p => p.id === id)?.name || 'Unknown';
 
+  // Compute play count per player across completed matches only
+  const playCount = matches.filter(m => m.status === 'completed').reduce((acc, match) => {
+    [...match.team1, ...match.team2].forEach(pid => {
+      acc[pid] = (acc[pid] || 0) + 1;
+    });
+    return acc;
+  }, {} as Record<string, number>);
+
+  const getPlayerLabel = (id: string) => {
+    const name = getPlayerName(id);
+    const count = playCount[id] || 0;
+    return `${name} (${count}x)`;
+  };
+
   const pendingMatches = matches.filter(m => m.status === 'pending');
   const completedMatches = matches.filter(m => m.status === 'completed');
+
+  // Build partnership history from completed matches
+  const partnerships = new Set<string>();
+  completedMatches.forEach(m => {
+    const key1 = [m.team1[0], m.team1[1]].sort().join('|');
+    const key2 = [m.team2[0], m.team2[1]].sort().join('|');
+    partnerships.add(key1);
+    partnerships.add(key2);
+  });
+
+  const hasPartneredBefore = (a: string, b: string) =>
+    partnerships.has([a, b].sort().join('|'));
 
   // Group pending matches by round
   const pendingByRound = pendingMatches.reduce((acc, match) => {
@@ -75,6 +101,8 @@ export function MatchList() {
                       match={match}
                       players={players.filter(p => p.active)}
                       getPlayerName={getPlayerName}
+                      getPlayerLabel={getPlayerLabel}
+                      hasPartneredBefore={hasPartneredBefore}
                       onSave={(s1: number, s2: number) => updateScore(match.id, s1, s2)}
                       onSwap={swapMatchPlayer}
                     />
@@ -107,11 +135,19 @@ export function MatchList() {
                       border: '1px solid var(--border-light)'
                     }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: match.score1! > match.score2! ? 600 : 400, color: match.score1! > match.score2! ? 'var(--accent-primary)' : 'inherit' }}>
-                          {getPlayerName(match.team1[0])} & {getPlayerName(match.team1[1])}
+                        <div style={{ fontWeight: match.score1! > match.score2! ? 600 : 400, color: match.score1! > match.score2! ? 'var(--accent-primary)' : 'inherit', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                          {getPlayerName(match.team1[0])}
+                          <span style={{ fontSize: '0.75rem', opacity: 0.5, fontWeight: 400 }}>({playCount[match.team1[0]] || 0}x)</span>
+                          {' & '}
+                          {getPlayerName(match.team1[1])}
+                          <span style={{ fontSize: '0.75rem', opacity: 0.5, fontWeight: 400 }}>({playCount[match.team1[1]] || 0}x)</span>
                         </div>
-                        <div style={{ fontWeight: match.score2! > match.score1! ? 600 : 400, color: match.score2! > match.score1! ? 'var(--accent-primary)' : 'inherit' }}>
-                          {getPlayerName(match.team2[0])} & {getPlayerName(match.team2[1])}
+                        <div style={{ fontWeight: match.score2! > match.score1! ? 600 : 400, color: match.score2! > match.score1! ? 'var(--accent-primary)' : 'inherit', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
+                          {getPlayerName(match.team2[0])}
+                          <span style={{ fontSize: '0.75rem', opacity: 0.5, fontWeight: 400 }}>({playCount[match.team2[0]] || 0}x)</span>
+                          {' & '}
+                          {getPlayerName(match.team2[1])}
+                          <span style={{ fontSize: '0.75rem', opacity: 0.5, fontWeight: 400 }}>({playCount[match.team2[1]] || 0}x)</span>
                         </div>
                       </div>
 
@@ -132,7 +168,7 @@ export function MatchList() {
   );
 }
 
-function MatchCard({ match, players, onSave, onSwap }: any) {
+function MatchCard({ match, players, getPlayerLabel, hasPartneredBefore, onSave, onSwap }: any) {
   const [s1, setS1] = useState('');
   const [s2, setS2] = useState('');
 
@@ -194,7 +230,7 @@ function MatchCard({ match, players, onSave, onSwap }: any) {
       >
         {players.map((p: any) => (
           <option key={p.id} value={p.id} style={{ color: '#000', direction: 'ltr' }}>
-            {p.name}
+            {getPlayerLabel(p.id)}
           </option>
         ))}
       </select>
@@ -221,6 +257,11 @@ function MatchCard({ match, players, onSave, onSwap }: any) {
         <div style={{ flex: 1, textAlign: 'right' }}>
           <div>{renderPlayerSelect(match.team1[0], 'right')}</div>
           <div style={{ marginTop: '8px' }}>{renderPlayerSelect(match.team1[1], 'right')}</div>
+          {hasPartneredBefore(match.team1[0], match.team1[1]) && (
+            <div style={{ marginTop: '6px', textAlign: 'right' }}>
+              <span title="These players have been partners before" style={{ fontSize: '0.7rem', background: 'rgba(255,180,0,0.15)', color: '#f0a500', border: '1px solid rgba(255,180,0,0.3)', borderRadius: '4px', padding: '2px 6px', fontWeight: 600 }}>🔁</span>
+            </div>
+          )}
         </div>
 
         {/* Scores */}
@@ -250,6 +291,11 @@ function MatchCard({ match, players, onSave, onSwap }: any) {
         <div style={{ flex: 1 }}>
           <div>{renderPlayerSelect(match.team2[0], 'left')}</div>
           <div style={{ marginTop: '8px' }}>{renderPlayerSelect(match.team2[1], 'left')}</div>
+          {hasPartneredBefore(match.team2[0], match.team2[1]) && (
+            <div style={{ marginTop: '6px' }}>
+              <span title="These players have been partners before" style={{ fontSize: '0.7rem', background: 'rgba(255,180,0,0.15)', color: '#f0a500', border: '1px solid rgba(255,180,0,0.3)', borderRadius: '4px', padding: '2px 6px', fontWeight: 600 }}>🔁</span>
+            </div>
+          )}
         </div>
       </div>
 

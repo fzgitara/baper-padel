@@ -98,12 +98,14 @@ export function HomeScreen() {
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
               >
                 <div>
-                  <h3 style={{ fontSize: '1.3rem', marginBottom: '4px' }}>{t.name}</h3>
-                  <div className="flex items-center gap-4 text-muted" style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                  <div className="flex items-center gap-4">
+                    <h3 style={{ fontSize: '1.3rem', marginBottom: '4px' }}>{t.name}</h3>
                     <span className="flex items-center gap-1">
                       <Calendar size={14} />
                       {new Date(t.createdAt).toLocaleDateString('en-GB')}
                     </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-muted" style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                     <span className={`badge ${t.status === 'active' ? 'badge-completed' : 'badge-pending'}`}>
                       {t.status.toUpperCase()}
                     </span>
