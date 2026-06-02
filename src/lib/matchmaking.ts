@@ -106,6 +106,99 @@ function getMexicanoPairing(
   };
 }
 
+/**
+ * For Americano format: given 4 players and the set of already-covered
+ * partnership pairs, pick the pairing that maximises NEW (uncovered) pairs.
+ * Ties are broken randomly.
+ */
+function getBestAmericanoPairing(
+  p1: Player,
+  p2: Player,
+  p3: Player,
+  p4: Player,
+  coveredPairs: Set<string>
+): { team1: [string, string]; team2: [string, string] } {
+  const uncovered = (a: string, b: string) => (coveredPairs.has(getPairKey(a, b)) ? 0 : 1);
+
+  const options = [
+    // Option A: p1+p2 vs p3+p4
+    {
+      team1: [p1, p2] as [Player, Player],
+      team2: [p3, p4] as [Player, Player],
+      score: uncovered(p1.id, p2.id) + uncovered(p3.id, p4.id),
+    },
+    // Option B: p1+p3 vs p2+p4
+    {
+      team1: [p1, p3] as [Player, Player],
+      team2: [p2, p4] as [Player, Player],
+      score: uncovered(p1.id, p3.id) + uncovered(p2.id, p4.id),
+    },
+    // Option C: p1+p4 vs p2+p3
+    {
+      team1: [p1, p4] as [Player, Player],
+      team2: [p2, p3] as [Player, Player],
+      score: uncovered(p1.id, p4.id) + uncovered(p2.id, p3.id),
+    },
+  ];
+
+  const maxScore = Math.max(...options.map(o => o.score));
+  const tied = options.filter(o => o.score === maxScore);
+  const best = tied[Math.floor(Math.random() * tied.length)];
+
+  return {
+    team1: [best.team1[0].id, best.team1[1].id],
+    team2: [best.team2[0].id, best.team2[1].id],
+  };
+}
+
+/**
+ * Returns the maximum number of NEW (uncovered) partnership pairs that can
+ * be produced by any of the 3 possible pairings of 4 players.
+ */
+function maxNewPairs(a: Player, b: Player, c: Player, d: Player, coveredPairs: Set<string>): number {
+  const u = (x: string, y: string) => (coveredPairs.has(getPairKey(x, y)) ? 0 : 1);
+  return Math.max(
+    u(a.id, b.id) + u(c.id, d.id),
+    u(a.id, c.id) + u(b.id, d.id),
+    u(a.id, d.id) + u(b.id, c.id),
+  );
+}
+
+/**
+ * From a list of players (sorted by fewest matches played), choose the group
+ * of 4 that can produce the most NEW partnership pairs.
+ * Considers only the top candidates (up to 8) to keep it efficient.
+ */
+function selectBestGroup(
+  sortedPlayers: Player[],
+  coveredPairs: Set<string>
+): [Player, Player, Player, Player] {
+  const candidates = sortedPlayers.slice(0, Math.min(8, sortedPlayers.length));
+  let bestGroup: [Player, Player, Player, Player] = [
+    candidates[0], candidates[1], candidates[2], candidates[3],
+  ];
+  let bestScore = -1;
+
+  for (let i = 0; i < candidates.length - 3; i++) {
+    for (let j = i + 1; j < candidates.length - 2; j++) {
+      for (let k = j + 1; k < candidates.length - 1; k++) {
+        for (let l = k + 1; l < candidates.length; l++) {
+          const score = maxNewPairs(
+            candidates[i], candidates[j], candidates[k], candidates[l],
+            coveredPairs
+          );
+          if (score > bestScore) {
+            bestScore = score;
+            bestGroup = [candidates[i], candidates[j], candidates[k], candidates[l]];
+          }
+        }
+      }
+    }
+  }
+
+  return bestGroup;
+}
+
 export function generateRounds(
   players: Player[],
   existingMatches: Match[],
@@ -121,23 +214,8 @@ export function generateRounds(
   }
 
   const N = activePlayers.length;
-  const targetPartnershipsCount = (N * (N - 1)) / 2;
-
-  let currentMatches = [...completedMatches];
   const activeIds = new Set(activePlayers.map(p => p.id));
 
-  const getActivePartnershipsCount = (matchesList: Match[]) => {
-    const covered = new Set<string>();
-    matchesList.forEach(m => {
-      const [p1, p2] = m.team1;
-      const [p3, p4] = m.team2;
-      if (activeIds.has(p1) && activeIds.has(p2)) covered.add(getPairKey(p1, p2));
-      if (activeIds.has(p3) && activeIds.has(p4)) covered.add(getPairKey(p3, p4));
-    });
-    return covered.size;
-  };
-
-  const maxRounds = Math.max(50, N * 4);
   const matchesPerRound = format === 'mexicano'
     ? Math.floor(N / 4)
     : Math.min(totalCourts, Math.floor(N / 4));
@@ -151,13 +229,9 @@ export function generateRounds(
       ? Math.max(...completedMatches.map(m => m.round)) + 1
       : 1;
 
-  const endRound = format === 'mexicano' ? startRound : startRound + maxRounds;
-
-  for (let r = startRound; r <= endRound; r++) {
-    if (format !== 'mexicano') {
-      if (getActivePartnershipsCount(currentMatches) >= targetPartnershipsCount) break;
-    }
-
+  // ── Mexicano ──────────────────────────────────────────────────────────────
+  if (format === 'mexicano') {
+    const currentMatches = [...completedMatches];
     const { partnerships, opponents } = buildHistoryMaps(currentMatches, activeIds);
 
     const playedCounts: Record<string, number> = {};
@@ -168,84 +242,122 @@ export function generateRounds(
       });
     });
 
-    let playersToPair: Player[];
+    const leaderboard = calculateLeaderboard(activePlayers, currentMatches);
+    const rankMap: Record<string, number> = {};
+    leaderboard.forEach((entry, idx) => { rankMap[entry.player.id] = idx; });
 
-    if (format === 'mexicano') {
-      const leaderboard = calculateLeaderboard(activePlayers, currentMatches);
-      const rankMap: Record<string, number> = {};
-      leaderboard.forEach((entry, idx) => {
-        rankMap[entry.player.id] = idx;
-      });
+    const playersToPair = shuffle(activePlayers).sort((a, b) => {
+      const playedDiff = playedCounts[a.id] - playedCounts[b.id];
+      if (playedDiff !== 0) return playedDiff;
+      return (rankMap[a.id] ?? 0) - (rankMap[b.id] ?? 0);
+    });
 
-      // Prioritize players with fewer matches played; use leaderboard rank as tiebreaker
-      playersToPair = shuffle(activePlayers).sort((a, b) => {
-        const playedDiff = playedCounts[a.id] - playedCounts[b.id];
-        if (playedDiff !== 0) return playedDiff;
-        return (rankMap[a.id] ?? 0) - (rankMap[b.id] ?? 0);
-      });
-    } else {
-      // Americano: prioritize players who have played fewer matches
-      const shuffled = shuffle(activePlayers);
-      playersToPair = shuffled.sort((a, b) => playedCounts[a.id] - playedCounts[b.id]);
-    }
-
-    const numToPlay = matchesPerRound * 4;
-    let available = playersToPair.slice(0, numToPlay);
+    let available = [...playersToPair];
     const roundMatches: Match[] = [];
 
     while (available.length >= 4) {
-      if (format === 'mexicano') {
-        const p1 = available.shift()!;
-        const p2 = available.shift()!;
-        const p3 = available.shift()!;
-        const p4 = available.shift()!;
+      const p1 = available.shift()!;
+      const p2 = available.shift()!;
+      const p3 = available.shift()!;
+      const p4 = available.shift()!;
+      const pairing = getMexicanoPairing(p1, p2, p3, p4, partnerships, opponents);
+      roundMatches.push({
+        id: uuidv4(),
+        tournament_id: tournamentId,
+        round: startRound,
+        team1: pairing.team1,
+        team2: pairing.team2,
+        score1: null,
+        score2: null,
+        status: 'pending',
+      });
+    }
 
-        const pairing = getMexicanoPairing(p1, p2, p3, p4, partnerships, opponents);
+    return [...currentMatches, ...roundMatches];
+  }
 
-        roundMatches.push({
-          id: uuidv4(),
-          tournament_id: tournamentId,
-          round: r,
-          team1: pairing.team1,
-          team2: pairing.team2,
-          score1: null,
-          score2: null,
-          status: 'pending',
-        });
-      } else {
-        const p1 = available.shift()!;
+  // ── Americano ─────────────────────────────────────────────────────────────
+  // Goal: pre-generate ALL rounds until every possible partner pair has
+  // appeared in a pending match (complete Americano schedule).
+  //
+  // Key design decisions:
+  //  - coveredPairs is updated in REAL TIME after every match (including
+  //    within the same round across multiple courts), so later courts can
+  //    see what partnerships the earlier courts already claimed.
+  //  - selectBestGroup picks the 4 players (from fewest-played candidates)
+  //    whose best pairing option covers the most NEW pairs.
+  //  - getBestAmericanoPairing then picks the pairing option that covers
+  //    the most new pairs; ties broken randomly.
 
-        available.sort(
-          (a, b) =>
-            (partnerships[getPairKey(p1.id, a.id)] || 0) -
-            (partnerships[getPairKey(p1.id, b.id)] || 0)
-        );
-        const p2 = available.shift()!;
+  const targetPairCount = (N * (N - 1)) / 2;
 
-        const p3 = available.shift()!;
+  // Seed covered pairs from completed matches only (pending will be regenerated).
+  const coveredPairs = new Set<string>();
+  completedMatches.forEach(m => {
+    const [p1, p2] = m.team1;
+    const [p3, p4] = m.team2;
+    if (activeIds.has(p1) && activeIds.has(p2)) coveredPairs.add(getPairKey(p1, p2));
+    if (activeIds.has(p3) && activeIds.has(p4)) coveredPairs.add(getPairKey(p3, p4));
+  });
 
-        available.sort(
-          (a, b) =>
-            (partnerships[getPairKey(p3.id, a.id)] || 0) -
-            (partnerships[getPairKey(p3.id, b.id)] || 0)
-        );
-        const p4 = available.shift()!;
+  // Seed play counts from completed matches only.
+  const playedCounts: Record<string, number> = {};
+  activePlayers.forEach(p => (playedCounts[p.id] = 0));
+  completedMatches.forEach(m => {
+    [...m.team1, ...m.team2].forEach(pId => {
+      if (playedCounts[pId] !== undefined) playedCounts[pId]++;
+    });
+  });
 
-        roundMatches.push({
-          id: uuidv4(),
-          tournament_id: tournamentId,
-          round: r,
-          team1: [p1.id, p2.id],
-          team2: [p3.id, p4.id],
-          score1: null,
-          score2: null,
-          status: 'pending',
-        });
-      }
+  const currentMatches = [...completedMatches];
+  const maxRounds = startRound + Math.max(50, N * 4);
+
+  for (let r = startRound; r <= maxRounds; r++) {
+    // Stop once every unique partnership has been scheduled.
+    if (coveredPairs.size >= targetPairCount) break;
+
+    const roundMatches: Match[] = [];
+    const usedInRound = new Set<string>();
+
+    for (let court = 0; court < matchesPerRound; court++) {
+      if (coveredPairs.size >= targetPairCount) break;
+
+      // Available players for this court: not already used in this round,
+      // sorted by fewest matches played (shuffle breaks ties randomly).
+      const available = shuffle(activePlayers)
+        .filter(p => !usedInRound.has(p.id))
+        .sort((a, b) => playedCounts[a.id] - playedCounts[b.id]);
+
+      if (available.length < 4) break;
+
+      // Pick the 4-player group that can cover the most new partnership pairs.
+      const [p1, p2, p3, p4] = selectBestGroup(available, coveredPairs);
+
+      // Among the 3 pairing options, choose the one covering the most new pairs.
+      const pairing = getBestAmericanoPairing(p1, p2, p3, p4, coveredPairs);
+
+      roundMatches.push({
+        id: uuidv4(),
+        tournament_id: tournamentId,
+        round: r,
+        team1: pairing.team1,
+        team2: pairing.team2,
+        score1: null,
+        score2: null,
+        status: 'pending',
+      });
+
+      // Update tracking immediately so the next court in this round
+      // benefits from knowing what's already been covered.
+      usedInRound.add(p1.id); usedInRound.add(p2.id);
+      usedInRound.add(p3.id); usedInRound.add(p4.id);
+      playedCounts[p1.id]++; playedCounts[p2.id]++;
+      playedCounts[p3.id]++; playedCounts[p4.id]++;
+      coveredPairs.add(getPairKey(pairing.team1[0], pairing.team1[1]));
+      coveredPairs.add(getPairKey(pairing.team2[0], pairing.team2[1]));
     }
 
     if (roundMatches.length === 0) break;
-
     currentMatches.push(...roundMatches);
   }
 
@@ -313,6 +425,16 @@ export function generateSingleMatch(
       status: 'pending',
     };
   } else {
+    // Americano: build covered pairs from ALL existing matches (completed + pending)
+    // so we don't repeat what's already scheduled.
+    const coveredPairs = new Set<string>();
+    existingMatches.forEach(m => {
+      const [p1, p2] = m.team1;
+      const [p3, p4] = m.team2;
+      if (activeIds.has(p1) && activeIds.has(p2)) coveredPairs.add(getPairKey(p1, p2));
+      if (activeIds.has(p3) && activeIds.has(p4)) coveredPairs.add(getPairKey(p3, p4));
+    });
+
     const shuffled = shuffle(activePlayers);
     const sortedPlayers = shuffled.sort((a, b) => {
       if (completedCounts[a.id] !== completedCounts[b.id])
@@ -320,30 +442,15 @@ export function generateSingleMatch(
       return totalCounts[a.id] - totalCounts[b.id];
     });
 
-    let available = sortedPlayers.slice(0, 4);
-
-    const p1 = available.shift()!;
-    available.sort(
-      (a, b) =>
-        (partnerships[getPairKey(p1.id, a.id)] || 0) -
-        (partnerships[getPairKey(p1.id, b.id)] || 0)
-    );
-    const p2 = available.shift()!;
-
-    const p3 = available.shift()!;
-    available.sort(
-      (a, b) =>
-        (partnerships[getPairKey(p3.id, a.id)] || 0) -
-        (partnerships[getPairKey(p3.id, b.id)] || 0)
-    );
-    const p4 = available.shift()!;
+    const [p1, p2, p3, p4] = selectBestGroup(sortedPlayers, coveredPairs);
+    const pairing = getBestAmericanoPairing(p1, p2, p3, p4, coveredPairs);
 
     return {
       id: uuidv4(),
       tournament_id: tournamentId,
       round: roundNum,
-      team1: [p1.id, p2.id],
-      team2: [p3.id, p4.id],
+      team1: pairing.team1,
+      team2: pairing.team2,
       score1: null,
       score2: null,
       status: 'pending',
