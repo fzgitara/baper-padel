@@ -7,7 +7,7 @@ export function Dashboard() {
 
   if (!activeTournament) return null;
 
-  const { status, players, matches, totalCourts, format } = activeTournament;
+  const { status, players, matches, totalCourts, format, pointsMode } = activeTournament;
   const activePlayers = players.filter(p => p.active).length;
   const totalMatches = matches.length;
   const completedMatches = matches.filter(m => m.status === 'completed').length;
@@ -63,6 +63,12 @@ export function Dashboard() {
         <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
           <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'capitalize' }}>{format}</div>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Format</div>
+        </div>
+        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+            {pointsMode === 'free' ? 'Free' : '21'}
+          </div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Points</div>
         </div>
       </div>
 

@@ -29,6 +29,7 @@ export interface Tournament {
   matches: Match[];
   status: 'setup' | 'active' | 'completed';
   format: 'americano' | 'mexicano';
+  pointsMode: 'total21' | 'free';
 }
 
 export interface TournamentStoreState {

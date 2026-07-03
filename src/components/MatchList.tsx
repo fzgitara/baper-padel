@@ -7,7 +7,7 @@ export function MatchList() {
   const activeTournament = tournaments.find(t => t.id === activeTournamentId);
 
   if (!activeTournament) return null;
-  const { matches, players, status } = activeTournament;
+  const { matches, players, status, pointsMode } = activeTournament;
 
   const getPlayerName = (id: string) => players.find(p => p.id === id)?.name || 'Unknown';
 
@@ -103,6 +103,7 @@ export function MatchList() {
                       getPlayerName={getPlayerName}
                       getPlayerLabel={getPlayerLabel}
                       hasPartneredBefore={hasPartneredBefore}
+                      pointsMode={pointsMode}
                       onSave={(s1: number, s2: number) => updateScore(match.id, s1, s2)}
                       onSwap={swapMatchPlayer}
                     />
@@ -168,7 +169,7 @@ export function MatchList() {
   );
 }
 
-function MatchCard({ match, players, getPlayerLabel, hasPartneredBefore, onSave, onSwap }: any) {
+function MatchCard({ match, players, getPlayerLabel, hasPartneredBefore, pointsMode, onSave, onSwap }: any) {
   const [s1, setS1] = useState('');
   const [s2, setS2] = useState('');
 
@@ -183,11 +184,13 @@ function MatchCard({ match, players, getPlayerLabel, hasPartneredBefore, onSave,
   const handleS1Change = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setS1(val);
-    if (val !== '') {
+    if (pointsMode === 'total21' && val !== '') {
       const num = parseInt(val, 10);
       if (!isNaN(num) && num >= 0 && num <= 21) {
         setS2((21 - num).toString());
       }
+    } else if (pointsMode !== 'total21') {
+      // free mode: no auto-fill
     } else {
       setS2('');
     }
@@ -196,11 +199,13 @@ function MatchCard({ match, players, getPlayerLabel, hasPartneredBefore, onSave,
   const handleS2Change = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setS2(val);
-    if (val !== '') {
+    if (pointsMode === 'total21' && val !== '') {
       const num = parseInt(val, 10);
       if (!isNaN(num) && num >= 0 && num <= 21) {
         setS1((21 - num).toString());
       }
+    } else if (pointsMode !== 'total21') {
+      // free mode: no auto-fill
     } else {
       setS1('');
     }
@@ -273,7 +278,7 @@ function MatchCard({ match, players, getPlayerLabel, hasPartneredBefore, onSave,
             value={s1}
             onChange={handleS1Change}
             min="0"
-            max="21"
+            {...(pointsMode === 'total21' ? { max: 21 } : {})}
           />
           <span style={{ color: 'var(--text-muted)' }}>-</span>
           <input
@@ -283,7 +288,7 @@ function MatchCard({ match, players, getPlayerLabel, hasPartneredBefore, onSave,
             value={s2}
             onChange={handleS2Change}
             min="0"
-            max="21"
+            {...(pointsMode === 'total21' ? { max: 21 } : {})}
           />
         </div>
 

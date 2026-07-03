@@ -8,15 +8,17 @@ export function HomeScreen() {
   const [newTournamentName, setNewTournamentName] = useState('');
   const [totalCourts, setTotalCourts] = useState(1);
   const [format, setFormat] = useState<'americano' | 'mexicano'>('americano');
+  const [pointsMode, setPointsMode] = useState<'total21' | 'free'>('total21');
   const { tournaments, createTournament, deleteTournament } = useTournamentStore();
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newTournamentName.trim()) {
-      const id = await createTournament(newTournamentName.trim(), totalCourts, format);
+      const id = await createTournament(newTournamentName.trim(), totalCourts, format, pointsMode);
       setNewTournamentName('');
       setTotalCourts(1);
       setFormat('americano');
+      setPointsMode('total21');
       navigate(`/tournament/${id}`);
     }
   };
@@ -56,6 +58,18 @@ export function HomeScreen() {
             >
               <option value="americano">Americano</option>
               <option value="mexicano">Mexicano</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span style={{ color: 'var(--text-muted)' }}>Points:</span>
+            <select
+              className="input"
+              style={{ cursor: 'pointer', background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--border-light)', padding: '6px 12px' }}
+              value={pointsMode}
+              onChange={(e) => setPointsMode(e.target.value as 'total21' | 'free')}
+            >
+              <option value="total21">Total 21</option>
+              <option value="free">Free</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
@@ -105,12 +119,15 @@ export function HomeScreen() {
                       {new Date(t.createdAt).toLocaleDateString('en-GB')}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 text-muted" style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                  <div className="flex items-center gap-4 text-muted" style={{ fontSize: '0.9rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                     <span className={`badge ${t.status === 'active' ? 'badge-completed' : 'badge-pending'}`}>
                       {t.status.toUpperCase()}
                     </span>
                     <span className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-primary)', textTransform: 'capitalize' }}>
                       {t.format || 'americano'}
+                    </span>
+                    <span className="badge" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                      {t.pointsMode === 'free' ? 'Free Points' : '21 pts'}
                     </span>
                     <span>{t.players.filter(p => p.active).length} Players</span>
                   </div>

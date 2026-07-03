@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import type { Player, Tournament, Match, TournamentStoreState } from '../lib/types';
-import { generateRounds } from '../lib/matchmaking';
+import { generateRounds, generateSingleMatch as generateSingleMatchUtil } from '../lib/matchmaking';
 import { supabase } from '../utils/supabase';
 
 interface TournamentActions {
   init: () => Promise<void>;
-  createTournament: (name: string, totalCourts: number, format: 'americano' | 'mexicano') => Promise<string>;
+  createTournament: (name: string, totalCourts: number, format: 'americano' | 'mexicano', pointsMode: 'total21' | 'free') => Promise<string>;
   deleteTournament: (id: string) => Promise<void>;
   setActiveTournament: (id: string | null) => void;
   updateTotalCourts: (courts: number) => Promise<void>;
@@ -68,14 +68,15 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
         status: t.status,
         players: playersForT,
         matches: dbMatches.filter((m: any) => m.tournament_id === t.id),
-        format: t.format || 'americano'
+        format: t.format || 'americano',
+        pointsMode: (t.points_mode as 'total21' | 'free') || 'total21'
       };
     });
 
     set({ tournaments: assembledTournaments, globalPlayers: dbPlayers, isInitialized: true });
   },
 
-  createTournament: async (name, totalCourts, format) => {
+  createTournament: async (name, totalCourts, format, pointsMode) => {
     const id = uuidv4();
     const createdAt = Date.now();
     
@@ -88,7 +89,8 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       players: [],
       matches: [],
       status: 'setup',
-      format
+      format,
+      pointsMode
     };
 
     set((state) => ({ 
@@ -103,7 +105,8 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       created_at: createdAt,
       total_courts: totalCourts,
       status: 'setup',
-      format
+      format,
+      points_mode: pointsMode
     });
 
     return id;
@@ -324,21 +327,20 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     const hasPending = t.matches.some(m => m.status === 'pending');
     if (hasPending) return;
 
-    // Use generateRounds so ALL matches for the next round are created at once
-    const newMatches = generateRounds(t.players, t.matches, activeId, t.totalCourts, t.format);
-    const matchesToInsert = newMatches.filter(m => !t.matches.some(om => om.id === m.id));
-    if (matchesToInsert.length === 0) return;
+    // Always generate a new match (works even after all unique pairs are covered)
+    const newMatch = generateSingleMatchUtil(t.players, t.matches, activeId, t.format);
+    if (!newMatch) return;
 
     // Optimistic
     set((s) => ({
       tournaments: s.tournaments.map(curr => {
         if (curr.id !== activeId) return curr;
-        return { ...curr, matches: newMatches };
+        return { ...curr, matches: [...curr.matches, newMatch] };
       })
     }));
 
     // Sync
-    await supabase.from('matches').insert(matchesToInsert);
+    await supabase.from('matches').insert(newMatch);
   },
 
   updateScore: async (matchId, score1, score2) => {
