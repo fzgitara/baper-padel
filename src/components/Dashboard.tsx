@@ -14,103 +14,119 @@ export function Dashboard() {
 
   return (
     <div className="glass-card flex flex-col gap-6">
+      {/* ── Header ── */}
       <div className="flex justify-between items-center">
-        <h2 className="flex items-center gap-2">
-          <Activity className="text-gradient" size={24} />
+        <h2 className="flex items-center gap-2" style={{ fontSize: 'var(--font-size-xl)' }}>
+          <Activity style={{ color: 'var(--accent-primary)' }} size={20} />
           Tournament Status
         </h2>
-        
+
         <div className="flex items-center gap-2">
-          <span className="badge" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-primary)', textTransform: 'capitalize', letterSpacing: '0.5px' }}>
+          <span className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)', border: '1px solid var(--border-light)', textTransform: 'capitalize' }}>
             {format}
           </span>
           <span className={`badge ${status === 'active' ? 'badge-completed' : 'badge-pending'}`}>
-            {status.toUpperCase()}
+            {status}
           </span>
         </div>
       </div>
 
-      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
-        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent-primary)' }}>{activePlayers}</div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Active Players</div>
+      {/* ── Stat Tiles ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 'var(--space-3)' }}>
+        {/* Players */}
+        <div className="stat-tile">
+          <div className="stat-value" style={{ color: 'var(--accent-primary)' }}>{activePlayers}</div>
+          <div className="stat-label">Players</div>
         </div>
-        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '12px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <input 
+
+        {/* Courts (editable) */}
+        <div className="stat-tile" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <input
             type="number"
             value={totalCourts}
             onChange={(e) => updateTotalCourts(Math.max(1, parseInt(e.target.value) || 1))}
-            style={{ 
-              background: 'transparent', 
-              border: 'none', 
-              color: '#fff', 
-              fontSize: '2rem', 
-              fontWeight: 700, 
-              width: '60px', 
+            style={{
+              background: 'transparent',
+              border: 'none',
+              borderBottom: '2px solid rgba(255,255,255,0.15)',
+              color: '#fff',
+              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
+              fontWeight: 700,
+              width: '60px',
               textAlign: 'center',
               outline: 'none',
-              borderBottom: '2px solid rgba(255,255,255,0.2)'
+              lineHeight: 1,
+              marginBottom: 'var(--space-1)',
+              transition: 'border-color var(--transition-fast)',
             }}
+            onFocus={(e) => (e.target.style.borderBottomColor = 'var(--accent-primary)')}
+            onBlur={(e) => (e.target.style.borderBottomColor = 'rgba(255,255,255,0.15)')}
             min="1"
             title="Edit total courts"
+            aria-label="Total courts"
           />
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', marginTop: '4px' }}>Courts</div>
+          <div className="stat-label">Courts</div>
         </div>
-        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent-secondary)' }}>{completedMatches} / {totalMatches}</div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Matches Played</div>
+
+        {/* Matches */}
+        <div className="stat-tile">
+          <div className="stat-value" style={{ color: 'var(--accent-secondary)' }}>
+            {completedMatches}<span style={{ fontSize: '1rem', fontWeight: 400, color: 'var(--text-muted)' }}>/{totalMatches}</span>
+          </div>
+          <div className="stat-label">Matches</div>
         </div>
-        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'capitalize' }}>{format}</div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Format</div>
-        </div>
-        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '12px', textAlign: 'center' }}>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+
+        {/* Points mode */}
+        <div className="stat-tile">
+          <div className="stat-value" style={{ fontSize: 'var(--font-size-xl)', color: 'var(--text-primary)' }}>
             {pointsMode === 'free' ? 'Free' : '21'}
           </div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Points</div>
+          <div className="stat-label">Points</div>
         </div>
       </div>
 
-      <div className="flex justify-center gap-4" style={{ marginTop: '10px' }}>
+      {/* ── Action Buttons ── */}
+      <div className="flex gap-3" style={{ marginTop: 'var(--space-1)' }}>
         {status === 'setup' && (
-          <button 
-            className="btn btn-primary" 
+          <button
+            id="start-tournament-btn"
+            className="btn btn-primary w-full"
             onClick={startTournament}
             disabled={activePlayers < 4}
-            style={{ width: '100%' }}
           >
-            <Play size={20} />
-            {activePlayers < 4 ? 'Need at least 4 players' : 'Start Tournament'}
+            <Play size={18} />
+            {activePlayers < 4 ? `Need ${4 - activePlayers} more player${4 - activePlayers !== 1 ? 's' : ''}` : 'Start Tournament'}
           </button>
         )}
-        
+
         {status === 'active' && (
-          <button 
-            className="btn btn-primary" 
+          <button
+            id="finish-tournament-btn"
+            className="btn btn-primary"
+            style={{ flex: 1 }}
             onClick={() => {
-              if (window.confirm('Are you sure you want to finish the tournament? No more matches can be generated.')) {
+              if (window.confirm('Finish the tournament? No more matches can be generated.')) {
                 finishTournament();
               }
             }}
-            style={{ flex: 1 }}
           >
             <CheckCircle size={18} />
-            Finish Tournament
+            Finish
           </button>
         )}
 
         {status !== 'setup' && (
-          <button 
-            className="btn btn-danger" 
+          <button
+            id="reset-tournament-btn"
+            className="btn btn-danger"
+            style={{ flex: status === 'active' ? '0 0 auto' : 1 }}
             onClick={() => {
-              if (window.confirm('Are you sure you want to reset the entire tournament? This cannot be undone.')) {
+              if (window.confirm('Reset the tournament? This cannot be undone.')) {
                 resetTournament();
               }
             }}
-            style={{ flex: 1 }}
           >
-            <RotateCcw size={18} />
+            <RotateCcw size={16} />
             Reset
           </button>
         )}

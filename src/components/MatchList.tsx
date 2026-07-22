@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTournamentStore } from '../store/tournamentStore';
-import { Swords, Check, Shuffle, Play } from 'lucide-react';
+import { Swords, Check, Shuffle, Play, ArrowLeftRight } from 'lucide-react';
 
 export function MatchList() {
   const { tournaments, activeTournamentId, updateScore, randomizePendingMatches, swapMatchPlayer, generateSingleMatch } = useTournamentStore();
@@ -47,7 +47,7 @@ export function MatchList() {
     return acc;
   }, {} as Record<number, typeof matches>);
 
-  const pendingRounds = Object.keys(pendingByRound).map(Number).sort((a, b) => a - b); // oldest/first rounds first
+  const pendingRounds = Object.keys(pendingByRound).map(Number).sort((a, b) => a - b);
 
   // Group completed matches by round
   const completedByRound = completedMatches.reduce((acc, match) => {
@@ -56,44 +56,72 @@ export function MatchList() {
     return acc;
   }, {} as Record<number, typeof matches>);
 
-  const completedRounds = Object.keys(completedByRound).map(Number).sort((a, b) => b - a); // newest rounds first
+  const completedRounds = Object.keys(completedByRound).map(Number).sort((a, b) => b - a);
 
   return (
     <div className="flex flex-col gap-6">
+
+      {/* ── Pending Matches ── */}
       <div className="glass-card">
-        <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
-          <h2 className="flex items-center gap-2">
-            <Swords className="text-gradient" size={24} />
+        <div className="flex justify-between items-center" style={{ marginBottom: 'var(--space-6)', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+          <h2 className="flex items-center gap-2" style={{ fontSize: 'var(--font-size-xl)' }}>
+            <Swords style={{ color: 'var(--accent-primary)' }} size={20} />
             Pending Matches
           </h2>
 
           <div className="flex gap-2">
             {status === 'active' && (
-              <button className="btn btn-primary" onClick={generateSingleMatch} title="Generate a single new match">
-                <Play size={16} />
-                <span>Generate Match</span>
+              <button
+                id="generate-match-btn"
+                className="btn btn-primary"
+                onClick={generateSingleMatch}
+                title="Generate a new match"
+              >
+                <Play size={15} />
+                <span>Generate</span>
               </button>
             )}
             {pendingMatches.length > 0 && status === 'active' && (
-              <button className="btn btn-outline" onClick={randomizePendingMatches} title="Randomize players in pending matches">
-                <Shuffle size={16} />
-                <span className="hidden md:inline">Randomize</span>
+              <button
+                id="randomize-matches-btn"
+                className="btn btn-outline"
+                onClick={randomizePendingMatches}
+                title="Randomize pending match players"
+              >
+                <Shuffle size={15} />
+                <span className="hide-mobile">Randomize</span>
               </button>
             )}
           </div>
         </div>
 
         {pendingMatches.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>
-            {status === 'active' ? 'All matches in the tournament are completed.' : 'Start the tournament to generate matches.'}
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 'var(--space-6) 0', fontSize: 'var(--font-size-sm)' }}>
+            {status === 'active'
+              ? 'All matches are completed. Generate a new one!'
+              : 'Start the tournament to generate matches.'}
           </p>
         ) : (
           <div className="flex flex-col gap-6">
             {pendingRounds.map(roundNum => (
               <div key={roundNum}>
-                <h3 className="text-muted" style={{ marginBottom: '12px', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                <div
+                  style={{
+                    fontSize: 'var(--font-size-xs)',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    color: 'var(--text-muted)',
+                    marginBottom: 'var(--space-3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-2)',
+                  }}
+                >
+                  <span style={{ width: 24, height: 1, background: 'var(--border-light)', display: 'inline-block' }} />
                   Round {roundNum}
-                </h3>
+                  <span style={{ flex: 1, height: 1, background: 'var(--border-light)', display: 'inline-block' }} />
+                </div>
                 <div className="grid gap-4">
                   {pendingByRound[roundNum].map(match => (
                     <MatchCard
@@ -115,50 +143,113 @@ export function MatchList() {
         )}
       </div>
 
+      {/* ── Completed Matches ── */}
       {completedRounds.length > 0 && (
-        <div className="glass-card" style={{ opacity: 0.8 }}>
-          <h2 style={{ marginBottom: '20px', fontSize: '1.2rem' }}>Completed Matches</h2>
-          <div className="flex flex-col gap-8">
+        <div className="glass-card" style={{ opacity: 0.85 }}>
+          <h2 style={{ marginBottom: 'var(--space-5)', fontSize: 'var(--font-size-xl)', color: 'var(--text-muted)' }}>
+            Completed Matches
+          </h2>
+          <div className="flex flex-col gap-6">
             {completedRounds.map(roundNum => (
               <div key={roundNum}>
-                <h3 className="text-muted" style={{ marginBottom: '12px', marginTop: '16px', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                <div
+                  style={{
+                    fontSize: 'var(--font-size-xs)',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    color: 'var(--text-subtle)',
+                    marginBottom: 'var(--space-3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-2)',
+                  }}
+                >
+                  <span style={{ width: 24, height: 1, background: 'var(--border-light)', display: 'inline-block' }} />
                   Round {roundNum}
-                </h3>
-                <div className="grid gap-4">
-                  {completedByRound[roundNum].map(match => (
-                    <div key={match.id} style={{
-                      background: 'rgba(0,0,0,0.2)',
-                      padding: '16px',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      border: '1px solid var(--border-light)'
-                    }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: match.score1! > match.score2! ? 600 : 400, color: match.score1! > match.score2! ? 'var(--accent-primary)' : 'inherit', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                          {getPlayerName(match.team1[0])}
-                          <span style={{ fontSize: '0.75rem', opacity: 0.5, fontWeight: 400 }}>({playCount[match.team1[0]] || 0}x)</span>
-                          {' & '}
-                          {getPlayerName(match.team1[1])}
-                          <span style={{ fontSize: '0.75rem', opacity: 0.5, fontWeight: 400 }}>({playCount[match.team1[1]] || 0}x)</span>
+                  <span style={{ flex: 1, height: 1, background: 'var(--border-light)', display: 'inline-block' }} />
+                </div>
+                <div className="grid gap-3">
+                  {completedByRound[roundNum].map(match => {
+                    const t1win = match.score1! > match.score2!;
+                    const t2win = match.score2! > match.score1!;
+                    return (
+                      <div
+                        key={match.id}
+                        style={{
+                          background: 'rgba(0,0,0,0.2)',
+                          padding: 'var(--space-3) var(--space-4)',
+                          borderRadius: 'var(--radius-lg)',
+                          border: '1px solid var(--border-light)',
+                          display: 'grid',
+                          gridTemplateColumns: '1fr auto 1fr',
+                          alignItems: 'center',
+                          gap: 'var(--space-3)',
+                        }}
+                      >
+                        {/* Team 1 */}
+                        <div style={{ minWidth: 0 }}>
+                          {[match.team1[0], match.team1[1]].map(pid => (
+                            <div
+                              key={pid}
+                              style={{
+                                fontWeight: t1win ? 600 : 400,
+                                color: t1win ? 'var(--accent-primary)' : 'var(--text-primary)',
+                                fontSize: 'var(--font-size-sm)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {getPlayerName(pid)}
+                              <span style={{ fontSize: '0.7rem', opacity: 0.45, marginLeft: '4px' }}>
+                                ({playCount[pid] || 0}x)
+                              </span>
+                            </div>
+                          ))}
                         </div>
-                        <div style={{ fontWeight: match.score2! > match.score1! ? 600 : 400, color: match.score2! > match.score1! ? 'var(--accent-primary)' : 'inherit', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
-                          {getPlayerName(match.team2[0])}
-                          <span style={{ fontSize: '0.75rem', opacity: 0.5, fontWeight: 400 }}>({playCount[match.team2[0]] || 0}x)</span>
-                          {' & '}
-                          {getPlayerName(match.team2[1])}
-                          <span style={{ fontSize: '0.75rem', opacity: 0.5, fontWeight: 400 }}>({playCount[match.team2[1]] || 0}x)</span>
-                        </div>
-                      </div>
 
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '2px', display: 'flex', gap: '12px' }}>
-                        <span style={{ color: match.score1! > match.score2! ? 'var(--accent-primary)' : 'var(--text-muted)' }}>{match.score1}</span>
-                        <span style={{ color: 'var(--border-light)' }}>-</span>
-                        <span style={{ color: match.score2! > match.score1! ? 'var(--accent-primary)' : 'var(--text-muted)' }}>{match.score2}</span>
+                        {/* Score */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 'var(--space-2)',
+                            fontWeight: 700,
+                            fontSize: 'var(--font-size-xl)',
+                            letterSpacing: '2px',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <span style={{ color: t1win ? 'var(--accent-primary)' : 'var(--text-muted)' }}>{match.score1}</span>
+                          <span style={{ color: 'var(--border-light)', fontWeight: 400, fontSize: 'var(--font-size-base)' }}>–</span>
+                          <span style={{ color: t2win ? 'var(--accent-primary)' : 'var(--text-muted)' }}>{match.score2}</span>
+                        </div>
+
+                        {/* Team 2 */}
+                        <div style={{ minWidth: 0, textAlign: 'right' }}>
+                          {[match.team2[0], match.team2[1]].map(pid => (
+                            <div
+                              key={pid}
+                              style={{
+                                fontWeight: t2win ? 600 : 400,
+                                color: t2win ? 'var(--accent-primary)' : 'var(--text-primary)',
+                                fontSize: 'var(--font-size-sm)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {getPlayerName(pid)}
+                              <span style={{ fontSize: '0.7rem', opacity: 0.45, marginLeft: '4px' }}>
+                                ({playCount[pid] || 0}x)
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -169,6 +260,7 @@ export function MatchList() {
   );
 }
 
+/* ─── MatchCard ──────────────────────────────────────────────────────────────── */
 function MatchCard({ match, players, getPlayerLabel, hasPartneredBefore, pointsMode, onSave, onSwap }: any) {
   const [s1, setS1] = useState('');
   const [s2, setS2] = useState('');
@@ -186,12 +278,8 @@ function MatchCard({ match, players, getPlayerLabel, hasPartneredBefore, pointsM
     setS1(val);
     if (pointsMode === 'total21' && val !== '') {
       const num = parseInt(val, 10);
-      if (!isNaN(num) && num >= 0 && num <= 21) {
-        setS2((21 - num).toString());
-      }
-    } else if (pointsMode !== 'total21') {
-      // free mode: no auto-fill
-    } else {
+      if (!isNaN(num) && num >= 0 && num <= 21) setS2((21 - num).toString());
+    } else if (pointsMode === 'total21') {
       setS2('');
     }
   };
@@ -201,120 +289,171 @@ function MatchCard({ match, players, getPlayerLabel, hasPartneredBefore, pointsM
     setS2(val);
     if (pointsMode === 'total21' && val !== '') {
       const num = parseInt(val, 10);
-      if (!isNaN(num) && num >= 0 && num <= 21) {
-        setS1((21 - num).toString());
-      }
-    } else if (pointsMode !== 'total21') {
-      // free mode: no auto-fill
-    } else {
+      if (!isNaN(num) && num >= 0 && num <= 21) setS1((21 - num).toString());
+    } else if (pointsMode === 'total21') {
       setS1('');
     }
   };
 
-  const renderPlayerSelect = (playerId: string, align: 'left' | 'right') => {
-    return (
-      <select
-        value={playerId}
-        onChange={(e) => onSwap(match.id, playerId, e.target.value)}
-        style={{
-          background: 'transparent',
-          border: 'none',
-          borderBottom: '1px dashed rgba(255,255,255,0.2)',
-          color: 'inherit',
-          fontSize: '1.1rem',
-          fontWeight: 500,
-          outline: 'none',
-          cursor: 'pointer',
-          textAlign: align,
-          width: '100%',
-          padding: '2px 0',
-          appearance: 'none',
-          direction: align === 'right' ? 'rtl' : 'ltr'
-        }}
-        title="Click to swap player"
-      >
-        {players.map((p: any) => (
-          <option key={p.id} value={p.id} style={{ color: '#000', direction: 'ltr' }}>
-            {getPlayerLabel(p.id)}
-          </option>
-        ))}
-      </select>
-    );
-  };
+  const renderPlayerSelect = (playerId: string) => (
+    <select
+      value={playerId}
+      onChange={(e) => onSwap(match.id, playerId, e.target.value)}
+      style={{
+        background: 'transparent',
+        border: 'none',
+        borderBottom: '1px dashed rgba(255,255,255,0.2)',
+        color: 'var(--text-primary)',
+        fontSize: 'var(--font-size-sm)',
+        fontWeight: 500,
+        outline: 'none',
+        cursor: 'pointer',
+        width: '100%',
+        padding: '3px 0',
+        fontFamily: "'Outfit', sans-serif",
+        transition: 'border-color var(--transition-fast)',
+      }}
+      onFocus={(e) => (e.target.style.borderBottomColor = 'var(--accent-primary)')}
+      onBlur={(e) => (e.target.style.borderBottomColor = 'rgba(255,255,255,0.2)')}
+      title="Click to swap player"
+    >
+      {players.map((p: any) => (
+        <option key={p.id} value={p.id} style={{ color: '#000', background: '#fff' }}>
+          {getPlayerLabel(p.id)}
+        </option>
+      ))}
+    </select>
+  );
 
   return (
-    <div style={{
-      background: 'rgba(255,255,255,0.02)',
-      border: '1px solid var(--border-light)',
-      borderRadius: '12px',
-      padding: '20px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '16px'
-    }}>
-      <div className="flex justify-between items-center text-muted" style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+    <div
+      style={{
+        background: 'rgba(255,255,255,0.025)',
+        border: '1px solid var(--border-light)',
+        borderRadius: 'var(--radius-lg)',
+        padding: 'var(--space-4)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--space-4)',
+        transition: 'border-color var(--transition-fast)',
+      }}
+    >
+      {/* Round label + badge */}
+      <div className="flex justify-between items-center" style={{ fontSize: 'var(--font-size-xs)', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>
         <span>Round {match.round}</span>
         <span className="badge badge-pending">Pending</span>
       </div>
 
-      <div className="flex items-center gap-4">
-        {/* Team 1 */}
-        <div style={{ flex: 1, textAlign: 'right' }}>
-          <div>{renderPlayerSelect(match.team1[0], 'right')}</div>
-          <div style={{ marginTop: '8px' }}>{renderPlayerSelect(match.team1[1], 'right')}</div>
+      {/* Teams + Score — responsive stacking */}
+      <div id="match-card-body" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 'var(--space-3)' }}>
+
+        {/* Team 1 (right-aligned) */}
+        <div style={{ textAlign: 'right' }}>
+          {renderPlayerSelect(match.team1[0])}
+          <div style={{ marginTop: 'var(--space-2)' }}>{renderPlayerSelect(match.team1[1])}</div>
           {hasPartneredBefore(match.team1[0], match.team1[1]) && (
-            <div style={{ marginTop: '6px', textAlign: 'right' }}>
-              <span title="These players have been partners before" style={{ fontSize: '0.7rem', background: 'rgba(255,180,0,0.15)', color: '#f0a500', border: '1px solid rgba(255,180,0,0.3)', borderRadius: '4px', padding: '2px 6px', fontWeight: 600 }}>🔁</span>
+            <div style={{ marginTop: 'var(--space-1)', textAlign: 'right' }}>
+              <span
+                title="These players have partnered before"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  fontSize: '0.65rem',
+                  background: 'rgba(245, 158, 11, 0.12)',
+                  color: 'var(--warn)',
+                  border: '1px solid rgba(245,158,11,0.25)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '1px 6px',
+                  fontWeight: 600,
+                }}
+              >
+                <ArrowLeftRight size={9} />
+                repeat
+              </span>
             </div>
           )}
         </div>
 
-        {/* Scores */}
-        <div className="flex items-center gap-2">
+        {/* Score inputs */}
+        <div className="flex items-center gap-2" style={{ flexShrink: 0 }}>
           <input
             type="number"
             className="input"
-            style={{ width: '60px', textAlign: 'center', fontSize: '1.2rem', padding: '8px' }}
+            style={{ width: '58px', textAlign: 'center', fontSize: 'var(--font-size-lg)', padding: 'var(--space-2)', fontWeight: 600 }}
             value={s1}
             onChange={handleS1Change}
             min="0"
+            placeholder="–"
             {...(pointsMode === 'total21' ? { max: 21 } : {})}
+            aria-label="Team 1 score"
           />
-          <span style={{ color: 'var(--text-muted)' }}>-</span>
+          <span style={{ color: 'var(--text-subtle)', fontSize: 'var(--font-size-sm)' }}>–</span>
           <input
             type="number"
             className="input"
-            style={{ width: '60px', textAlign: 'center', fontSize: '1.2rem', padding: '8px' }}
+            style={{ width: '58px', textAlign: 'center', fontSize: 'var(--font-size-lg)', padding: 'var(--space-2)', fontWeight: 600 }}
             value={s2}
             onChange={handleS2Change}
             min="0"
+            placeholder="–"
             {...(pointsMode === 'total21' ? { max: 21 } : {})}
+            aria-label="Team 2 score"
           />
         </div>
 
-        {/* Team 2 */}
-        <div style={{ flex: 1 }}>
-          <div>{renderPlayerSelect(match.team2[0], 'left')}</div>
-          <div style={{ marginTop: '8px' }}>{renderPlayerSelect(match.team2[1], 'left')}</div>
+        {/* Team 2 (left-aligned) */}
+        <div>
+          {renderPlayerSelect(match.team2[0])}
+          <div style={{ marginTop: 'var(--space-2)' }}>{renderPlayerSelect(match.team2[1])}</div>
           {hasPartneredBefore(match.team2[0], match.team2[1]) && (
-            <div style={{ marginTop: '6px' }}>
-              <span title="These players have been partners before" style={{ fontSize: '0.7rem', background: 'rgba(255,180,0,0.15)', color: '#f0a500', border: '1px solid rgba(255,180,0,0.3)', borderRadius: '4px', padding: '2px 6px', fontWeight: 600 }}>🔁</span>
+            <div style={{ marginTop: 'var(--space-1)' }}>
+              <span
+                title="These players have partnered before"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  fontSize: '0.65rem',
+                  background: 'rgba(245, 158, 11, 0.12)',
+                  color: 'var(--warn)',
+                  border: '1px solid rgba(245,158,11,0.25)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '1px 6px',
+                  fontWeight: 600,
+                }}
+              >
+                <ArrowLeftRight size={9} />
+                repeat
+              </span>
             </div>
           )}
         </div>
       </div>
 
-      <div className="flex justify-center" style={{ marginTop: '8px' }}>
-        <button
-          className="btn btn-primary"
-          onClick={handleSave}
-          disabled={s1 === '' || s2 === ''}
-          style={{ width: '100%', maxWidth: '200px' }}
-        >
-          <Check size={18} />
-          Save Score
-        </button>
-      </div>
+      {/* Save button */}
+      <button
+        id={`save-score-${match.id}`}
+        className="btn btn-primary w-full"
+        onClick={handleSave}
+        disabled={s1 === '' || s2 === ''}
+        style={{ maxWidth: '220px', alignSelf: 'center' }}
+      >
+        <Check size={16} />
+        Save Score
+      </button>
+
+      {/* Responsive: stack on mobile */}
+      <style>{`
+        @media (max-width: 480px) {
+          #match-card-body {
+            grid-template-columns: 1fr !important;
+          }
+          #match-card-body > div:first-child {
+            text-align: left !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
