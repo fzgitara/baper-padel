@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useTournamentStore } from '../store/tournamentStore';
 import { UserPlus, UserMinus, Users } from 'lucide-react';
+import type { Player } from '../lib/types';
+import { ConfirmModal } from './ConfirmModal';
 
 export function PlayerManagement() {
   const [newPlayerName, setNewPlayerName] = useState('');
+  const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
   const { tournaments, activeTournamentId, addPlayer, removePlayer, globalPlayers } = useTournamentStore();
   const activeTournament = tournaments.find(t => t.id === activeTournamentId);
 
@@ -16,6 +19,13 @@ export function PlayerManagement() {
     if (newPlayerName.trim()) {
       addPlayer(newPlayerName.trim());
       setNewPlayerName('');
+    }
+  };
+
+  const handleConfirmRemove = () => {
+    if (playerToDelete) {
+      removePlayer(playerToDelete.id);
+      setPlayerToDelete(null);
     }
   };
 
@@ -96,7 +106,7 @@ export function PlayerManagement() {
               </span>
               <button
                 id={`remove-player-${player.id}`}
-                onClick={() => removePlayer(player.id)}
+                onClick={() => setPlayerToDelete(player)}
                 className="btn btn-danger btn-icon"
                 style={{ padding: '5px', borderRadius: 'var(--radius-sm)', flexShrink: 0 }}
                 title={`Remove ${player.name}`}
@@ -108,6 +118,20 @@ export function PlayerManagement() {
           ))}
         </div>
       )}
+
+      {/* ── Confirmation Modal ── */}
+      <ConfirmModal
+        isOpen={!!playerToDelete}
+        title="Remove Player?"
+        message={
+          <>
+            Are you sure you want to set <strong>{playerToDelete?.name}</strong> to inactive for this tournament?
+          </>
+        }
+        confirmText="Remove"
+        onConfirm={handleConfirmRemove}
+        onClose={() => setPlayerToDelete(null)}
+      />
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useTournamentStore } from '../store/tournamentStore';
 import { calculateLeaderboard } from '../lib/leaderboard';
-import { Trophy, ArrowUpDown } from 'lucide-react';
+import { Trophy, ArrowUpDown, Trash2 } from 'lucide-react';
+import type { Player } from '../lib/types';
+import { ConfirmModal } from './ConfirmModal';
 
 const SORT_LABELS: Record<string, string> = {
   wins: 'Wins',
@@ -13,7 +15,8 @@ const SORT_ORDER: Array<'wins' | 'points' | 'diff'> = ['wins', 'points', 'diff']
 
 export function Leaderboard() {
   const [sortBy, setSortBy] = useState<'wins' | 'points' | 'diff'>('wins');
-  const { tournaments, activeTournamentId } = useTournamentStore();
+  const [playerToDelete, setPlayerToDelete] = useState<Player | null>(null);
+  const { tournaments, activeTournamentId, deletePlayerCompletely } = useTournamentStore();
   const activeTournament = tournaments.find(t => t.id === activeTournamentId);
 
   if (!activeTournament) return null;
@@ -26,6 +29,13 @@ export function Leaderboard() {
       const idx = SORT_ORDER.indexOf(prev);
       return SORT_ORDER[(idx + 1) % SORT_ORDER.length];
     });
+  };
+
+  const handleConfirmDelete = () => {
+    if (playerToDelete) {
+      deletePlayerCompletely(playerToDelete.id);
+      setPlayerToDelete(null);
+    }
   };
 
   if (leaderboard.length === 0) {
@@ -69,8 +79,9 @@ export function Leaderboard() {
               <th style={{ textAlign: 'center', width: '36px', padding: '6px 4px' }}>W</th>
               <th style={{ textAlign: 'center', width: '36px', padding: '6px 4px' }}>L</th>
               <th style={{ textAlign: 'center', width: '36px', padding: '6px 4px' }}>GP</th>
-              <th style={{ textAlign: 'center', width: '44px', padding: '6px 4px' }}>Pts</th>
               <th style={{ textAlign: 'center', width: '44px', padding: '6px 4px' }}>Diff</th>
+              <th style={{ textAlign: 'center', width: '44px', padding: '6px 4px' }}>Pts</th>
+              <th style={{ textAlign: 'center', width: '44px', padding: '6px 4px' }}>Act</th>
             </tr>
           </thead>
           <tbody>
@@ -94,7 +105,6 @@ export function Leaderboard() {
                   <td style={{ textAlign: 'center', color: 'var(--accent-primary)', fontWeight: 600, padding: '6px 4px' }}>{entry.wins}</td>
                   <td style={{ textAlign: 'center', color: 'var(--danger)', padding: '6px 4px' }}>{entry.losses}</td>
                   <td style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '6px 4px' }}>{entry.matchesPlayed}</td>
-                  <td style={{ textAlign: 'center', fontWeight: 600, padding: '6px 4px' }}>{entry.totalPoints}</td>
                   <td style={{
                     textAlign: 'center',
                     fontWeight: 600,
@@ -103,12 +113,38 @@ export function Leaderboard() {
                   }}>
                     {entry.pointDiff > 0 ? '+' : ''}{entry.pointDiff}
                   </td>
+                  <td style={{ textAlign: 'center', fontWeight: 600, padding: '6px 4px' }}>{entry.totalPoints}</td>
+                  <td style={{ textAlign: 'center', padding: '6px 4px' }}>
+                    <button
+                      id={`delete-participant-${entry.player.id}`}
+                      className="btn btn-danger btn-icon"
+                      style={{ padding: '4px', borderRadius: 'var(--radius-sm)', display: 'inline-flex' }}
+                      title={`Remove ${entry.player.name}`}
+                      onClick={() => setPlayerToDelete(entry.player)}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+
+      {/* ── Confirmation Modal ── */}
+      <ConfirmModal
+        isOpen={!!playerToDelete}
+        title="Remove Participant?"
+        message={
+          <>
+            Are you sure you want to remove <strong>{playerToDelete?.name}</strong> from this tournament?
+          </>
+        }
+        confirmText="Remove"
+        onConfirm={handleConfirmDelete}
+        onClose={() => setPlayerToDelete(null)}
+      />
 
       {/* ── Tiebreaker footnote ── */}
       <div style={{ marginTop: 'var(--space-4)', fontSize: 'var(--font-size-xs)', color: 'var(--text-subtle)' }}>
@@ -117,3 +153,4 @@ export function Leaderboard() {
     </div>
   );
 }
+
