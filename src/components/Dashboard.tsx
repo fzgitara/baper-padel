@@ -2,7 +2,7 @@ import { useTournamentStore } from '../store/tournamentStore';
 import { Play, RotateCcw, Activity, CheckCircle } from 'lucide-react';
 
 export function Dashboard() {
-  const { tournaments, activeTournamentId, startTournament, resetTournament, updateTotalCourts, finishTournament } = useTournamentStore();
+  const { tournaments, activeTournamentId, startTournament, resetTournament, updateTotalCourts, finishTournament, connectionStatus } = useTournamentStore();
   const activeTournament = tournaments.find(t => t.id === activeTournamentId);
 
   if (!activeTournament) return null;
@@ -19,6 +19,8 @@ export function Dashboard() {
         <h2 className="flex items-center gap-2" style={{ fontSize: 'var(--font-size-xl)' }}>
           <Activity style={{ color: 'var(--accent-primary)' }} size={20} />
           Tournament Status
+          {/* ── Realtime Connection Status ── */}
+          <ConnectionDot />
         </h2>
 
         <div className="flex items-center gap-2">
@@ -132,5 +134,32 @@ export function Dashboard() {
         )}
       </div>
     </div>
+  );
+}
+
+const STATUS_CONFIG = {
+  connected: { color: '#22c55e', glow: 'rgba(34, 197, 94, 0.5)', label: 'Live' },
+  connecting: { color: '#eab308', glow: 'rgba(234, 179, 8, 0.5)', label: 'Connecting...' },
+  error: { color: '#ef4444', glow: 'rgba(239, 68, 68, 0.5)', label: 'Connection error' },
+  disconnected: { color: '#6b7280', glow: 'rgba(107, 114, 128, 0.4)', label: 'Offline' },
+} as const;
+
+export function ConnectionDot() {
+  const connectionStatus = useTournamentStore((s) => s.connectionStatus);
+  const config = STATUS_CONFIG[connectionStatus] || STATUS_CONFIG.disconnected;
+
+  return (
+    <span
+      title={config.label}
+      style={{
+        display: 'inline-block',
+        width: 8,
+        height: 8,
+        borderRadius: '50%',
+        background: config.color,
+        boxShadow: `0 0 6px 1px ${config.glow}`,
+        animation: connectionStatus === 'connecting' ? 'pulse-dot 1.2s ease-in-out infinite' : 'none',
+      }}
+    />
   );
 }

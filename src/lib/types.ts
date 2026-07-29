@@ -37,4 +37,5 @@ export interface TournamentStoreState {
   globalPlayers: GlobalPlayer[];
   activeTournamentId: string | null;
   isInitialized: boolean;
+  connectionStatus: 'connecting' | 'connected' | 'error' | 'disconnected';
 }

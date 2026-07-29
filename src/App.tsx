@@ -30,6 +30,14 @@ function TournamentView() {
     };
   }, [id, setActiveTournament]);
 
+  useEffect(() => {
+    console.log('subscribing...');
+    const unsubscribe = useTournamentStore.getState().subscribeToRealtime();
+    useTournamentStore.getState().init();
+
+    return () => unsubscribe();
+  }, []);
+
   const activeTournament = tournaments.find(t => t.id === id);
 
   if (!activeTournament) {

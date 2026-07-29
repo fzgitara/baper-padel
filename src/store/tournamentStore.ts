@@ -22,6 +22,8 @@ interface TournamentActions {
   swapMatchPlayer: (matchId: string, oldPlayerId: string, newPlayerId: string) => Promise<void>;
   finishTournament: () => Promise<void>;
   resetTournament: () => Promise<void>;
+
+  subscribeToRealtime: () => () => void;
 }
 
 export const useTournamentStore = create<TournamentStoreState & TournamentActions>((set, get) => ({
@@ -29,6 +31,122 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
   globalPlayers: [],
   activeTournamentId: null,
   isInitialized: false,
+  connectionStatus: 'connecting',
+
+  subscribeToRealtime: () => {
+    set({ connectionStatus: 'connecting' });
+
+    const channel = supabase
+      .channel('tournament-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tournaments' },
+        (payload) => {
+          set((s) => {
+            if (payload.eventType === 'DELETE') {
+              return {
+                tournaments: s.tournaments.filter(t => t.id !== payload.old.id),
+                activeTournamentId: s.activeTournamentId === payload.old.id ? null : s.activeTournamentId
+              };
+            }
+            const row: any = payload.new;
+            const exists = s.tournaments.some(t => t.id === row.id);
+            const patch = {
+              id: row.id,
+              name: row.name,
+              createdAt: Number(row.created_at),
+              totalCourts: row.total_courts || 1,
+              status: row.status,
+              format: row.format || 'americano',
+              pointsMode: (row.points_mode as 'total21' | 'free') || 'total21',
+            };
+            return {
+              tournaments: exists
+                ? s.tournaments.map(t => t.id === row.id ? { ...t, ...patch } : t)
+                : [...s.tournaments, { ...patch, players: [], matches: [] }]
+            };
+          });
+        }
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'players' },
+        (payload) => {
+          set((s) => {
+            if (payload.eventType === 'DELETE') {
+              return { globalPlayers: s.globalPlayers.filter(p => p.id !== payload.old.id) };
+            }
+            const row: any = payload.new;
+            const exists = s.globalPlayers.some(p => p.id === row.id);
+            return {
+              globalPlayers: exists
+                ? s.globalPlayers.map(p => p.id === row.id ? { ...p, ...row } : p)
+                : [...s.globalPlayers, row]
+            };
+          });
+        }
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tournament_participants' },
+        (payload) => {
+          set((s) => {
+            const row: any = payload.eventType === 'DELETE' ? payload.old : payload.new;
+            const gp = s.globalPlayers.find(p => p.id === row.player_id);
+            return {
+              tournaments: s.tournaments.map(t => {
+                if (t.id !== row.tournament_id) return t;
+                if (payload.eventType === 'DELETE') {
+                  return { ...t, players: t.players.filter(p => p.id !== row.player_id) };
+                }
+                const exists = t.players.some(p => p.id === row.player_id);
+                return {
+                  ...t,
+                  players: exists
+                    ? t.players.map(p => p.id === row.player_id ? { ...p, active: row.active } : p)
+                    : [...t.players, { id: row.player_id, name: gp?.name || 'Unknown', active: row.active }]
+                };
+              })
+            };
+          });
+        }
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' },
+        (payload) => {
+          set((s) => {
+            const row: any = payload.eventType === 'DELETE' ? payload.old : payload.new;
+            return {
+              tournaments: s.tournaments.map(t => {
+                if (t.id !== row.tournament_id) return t;
+                if (payload.eventType === 'DELETE') {
+                  return { ...t, matches: t.matches.filter(m => m.id !== row.id) };
+                }
+                const exists = t.matches.some(m => m.id === row.id);
+                return {
+                  ...t,
+                  matches: exists
+                    ? t.matches.map(m => m.id === row.id ? { ...m, ...row } : m)
+                    : [...t.matches, row]
+                };
+              })
+            };
+          });
+        }
+      )
+      .subscribe((status, err) => {
+        const prevStatus = get().connectionStatus;
+
+        if (status === 'SUBSCRIBED') {
+          set({ connectionStatus: 'connected' });
+          if (prevStatus === 'error' || prevStatus === 'disconnected') {
+            get().init(); // resync missed changes after reconnect
+          }
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('Realtime subscription issue:', status, err);
+          set({ connectionStatus: 'error' });
+        } else if (status === 'CLOSED') {
+          set({ connectionStatus: 'disconnected' });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
 
   init: async () => {
     // Fetch all data
@@ -79,7 +197,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
   createTournament: async (name, totalCourts, format, pointsMode) => {
     const id = uuidv4();
     const createdAt = Date.now();
-    
+
     // Optimistic UI update
     const newTournament: Tournament = {
       id,
@@ -93,7 +211,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       pointsMode
     };
 
-    set((state) => ({ 
+    set((state) => ({
       tournaments: [...state.tournaments, newTournament],
       activeTournamentId: id
     }));
@@ -119,7 +237,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
 
     // Optimistic
     set((s) => ({
-      tournaments: s.tournaments.map(curr => 
+      tournaments: s.tournaments.map(curr =>
         curr.id === activeId ? { ...curr, totalCourts: courts } : curr
       )
     }));
@@ -164,7 +282,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     const newPlayers: Player[] = existingPlayer
       ? t.players.map(p => p.id === globalPlayer!.id ? { ...p, active: true } : p)
       : [...t.players, { id: globalPlayer!.id, name: globalPlayer!.name, active: true }];
-    
+
     let newMatches = t.matches;
     let matchesToInsert: Match[] = [];
 
@@ -352,9 +470,9 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     set((s) => ({
       tournaments: s.tournaments.map(curr => {
         if (curr.id !== activeId) return curr;
-        const newMatches = curr.matches.map(m => 
-          m.id === matchId 
-            ? { ...m, score1, score2, status: 'completed' as const } 
+        const newMatches = curr.matches.map(m =>
+          m.id === matchId
+            ? { ...m, score1, score2, status: 'completed' as const }
             : m
         );
         return { ...curr, matches: newMatches };
@@ -362,10 +480,10 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     }));
 
     // Sync
-    await supabase.from('matches').update({ 
-      score1, 
-      score2, 
-      status: 'completed' 
+    await supabase.from('matches').update({
+      score1,
+      score2,
+      status: 'completed'
     }).eq('id', matchId);
   },
 
