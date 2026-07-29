@@ -2,7 +2,7 @@ import { useTournamentStore } from '../store/tournamentStore';
 import { Play, RotateCcw, Activity, CheckCircle } from 'lucide-react';
 
 export function Dashboard() {
-  const { tournaments, activeTournamentId, startTournament, resetTournament, updateTotalCourts, finishTournament, connectionStatus } = useTournamentStore();
+  const { tournaments, activeTournamentId, startTournament, resetTournament, updateTotalCourts, finishTournament } = useTournamentStore();
   const activeTournament = tournaments.find(t => t.id === activeTournamentId);
 
   if (!activeTournament) return null;
