@@ -20,17 +20,16 @@ export function Dashboard() {
           <Activity style={{ color: 'var(--accent-primary)' }} size={20} />
           Tournament Status
           {/* ── Realtime Connection Status ── */}
-          <ConnectionDot />
         </h2>
-
-        <div className="flex items-center gap-2">
-          <span className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)', border: '1px solid var(--border-light)', textTransform: 'capitalize' }}>
-            {format}
-          </span>
-          <span className={`badge ${status === 'active' ? 'badge-completed' : 'badge-pending'}`}>
-            {status}
-          </span>
-        </div>
+        <ConnectionDot />
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)', border: '1px solid var(--border-light)', textTransform: 'capitalize' }}>
+          {format}
+        </span>
+        <span className={`badge ${status === 'active' ? 'badge-completed' : 'badge-pending'}`}>
+          {status}
+        </span>
       </div>
 
       {/* ── Stat Tiles ── */}
@@ -149,17 +148,20 @@ export function ConnectionDot() {
   const config = STATUS_CONFIG[connectionStatus] || STATUS_CONFIG.disconnected;
 
   return (
-    <span
-      title={config.label}
-      style={{
-        display: 'inline-block',
-        width: 8,
-        height: 8,
-        borderRadius: '50%',
-        background: config.color,
-        boxShadow: `0 0 6px 1px ${config.glow}`,
-        animation: connectionStatus === 'connecting' ? 'pulse-dot 1.2s ease-in-out infinite' : 'none',
-      }}
-    />
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <span
+        title={config.label}
+        style={{
+          display: 'inline-block',
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: config.color,
+          boxShadow: `0 0 6px 1px ${config.glow}`,
+          animation: connectionStatus === 'connecting' ? 'pulse-dot 1.2s ease-in-out infinite' : 'none',
+        }}
+      />
+      <span style={{ color: config.color, fontSize: 'var(--font-size-xs)' }}>{config.label}</span>
+    </div>
   );
 }
