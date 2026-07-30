@@ -23,7 +23,6 @@ export function exportLeaderboardPNG(tournament: Tournament, leaderboard: Leader
   const marginY = 80;
   const cardWidth = width - marginX * 2;
   const cardHeight = height - marginY * 2;
-  const cardRadius = 40;
 
   // Background is 100% transparent (no fill)
 

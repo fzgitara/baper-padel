@@ -30,7 +30,7 @@ interface TournamentActions {
 }
 
 let inFlightFetchTournaments: Promise<void> | null = null;
-const inFlightFetchById: Record<string, Promise<void>> = {};
+const inFlightFetchById: Record<string, Promise<void> | undefined> = {};
 
 export const useTournamentStore = create<TournamentStoreState & TournamentActions>((set, get) => ({
   tournaments: [],
