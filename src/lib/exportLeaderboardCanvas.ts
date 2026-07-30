@@ -287,12 +287,6 @@ function drawRoundedRect(
   ctx.closePath();
 }
 
-function supportsNativeShare(): boolean {
-  // The real question isn't "is this mobile" — it's "does this browser
-  // support sharing files via the native share sheet at all"
-  return typeof navigator.share === 'function' && typeof navigator.canShare === 'function';
-}
-
 function isMobileDevice(): boolean {
   // Modern Client Hints API — most reliable, Chromium browsers
   const uaData = (navigator as any).userAgentData;
