@@ -227,11 +227,32 @@ export function exportLeaderboardPNG(tournament: Tournament, leaderboard: Leader
   // ctx.fillText(`DATE: ${timestamp}`, marginX + cardWidth - contentPaddingX, footerY);
 
   // Trigger Download
-  const link = document.createElement('a');
   const safeName = (tournament.name || 'tournament').toLowerCase().replace(/[^a-z0-9]/g, '-');
-  link.download = `baper-padel-leaderboard-9x16-${safeName}-${Date.now()}.png`;
-  link.href = canvas.toDataURL('image/png');
-  link.click();
+  const fileName = `baper-padel-leaderboard-9x16-${safeName}-${Date.now()}.png`;
+  const dataUrl = canvas.toDataURL('image/png');
+
+  if (!isMobileDevice()) {
+    // Desktop: synchronous download only, never touch Web Share
+    downloadDataUrl(dataUrl, fileName);
+    return;
+  }
+
+  canvas.toBlob(async (blob) => {
+    if (!blob) {
+      downloadDataUrl(dataUrl, fileName);
+      return;
+    }
+    const file = new File([blob], fileName, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: tournament.name || 'Padel Leaderboard' });
+        return;
+      } catch {
+        // fall through
+      }
+    }
+    downloadDataUrl(dataUrl, fileName);
+  }, 'image/png');
 }
 
 // Helper to draw smooth rounded rectangles on HTML Canvas
@@ -264,4 +285,31 @@ function drawRoundedRect(
   ctx.lineTo(x, y + tl);
   ctx.quadraticCurveTo(x, y, x + tl, y);
   ctx.closePath();
+}
+
+function supportsNativeShare(): boolean {
+  // The real question isn't "is this mobile" — it's "does this browser
+  // support sharing files via the native share sheet at all"
+  return typeof navigator.share === 'function' && typeof navigator.canShare === 'function';
+}
+
+function isMobileDevice(): boolean {
+  // Modern Client Hints API — most reliable, Chromium browsers
+  const uaData = (navigator as any).userAgentData;
+  if (uaData && typeof uaData.mobile === 'boolean') {
+    return uaData.mobile;
+  }
+  // Fallback for Safari/Firefox — narrower regex, excludes iPad
+  // (iPadOS reports as "Macintosh" by default, which is correct — iPads
+  // in desktop mode behave like desktops for this purpose)
+  return /iPhone|iPod|Android.*Mobile/i.test(navigator.userAgent);
+}
+
+function downloadDataUrl(dataUrl: string, fileName: string): void {
+  const link = document.createElement('a');
+  link.href = dataUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
