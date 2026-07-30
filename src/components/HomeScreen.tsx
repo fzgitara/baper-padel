@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTournamentStore } from '../store/tournamentStore';
 import { Trophy, Plus, Calendar, Trash2 } from 'lucide-react';
@@ -10,6 +10,10 @@ export function HomeScreen() {
   const [format, setFormat] = useState<'americano' | 'mexicano'>('americano');
   const [pointsMode, setPointsMode] = useState<'total21' | 'free'>('total21');
   const { tournaments, createTournament, deleteTournament } = useTournamentStore();
+
+  useEffect(() => {
+    useTournamentStore.getState().fetchTournaments();
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

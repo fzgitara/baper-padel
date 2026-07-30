@@ -6,6 +6,8 @@ import { supabase } from '../utils/supabase';
 
 interface TournamentActions {
   init: () => Promise<void>;
+  fetchTournaments: () => Promise<void>;
+  fetchTournamentById: (id: string) => Promise<void>;
   createTournament: (name: string, totalCourts: number, format: 'americano' | 'mexicano', pointsMode: 'total21' | 'free') => Promise<string>;
   deleteTournament: (id: string) => Promise<void>;
   setActiveTournament: (id: string | null) => void;
@@ -26,6 +28,9 @@ interface TournamentActions {
 
   subscribeToRealtime: () => () => void;
 }
+
+let inFlightFetchTournaments: Promise<void> | null = null;
+const inFlightFetchById: Record<string, Promise<void>> = {};
 
 export const useTournamentStore = create<TournamentStoreState & TournamentActions>((set, get) => ({
   tournaments: [],
@@ -134,7 +139,12 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
         if (status === 'SUBSCRIBED') {
           set({ connectionStatus: 'connected' });
           if (prevStatus === 'error' || prevStatus === 'disconnected') {
-            get().init(); // resync missed changes after reconnect
+            const activeId = get().activeTournamentId;
+            if (activeId) {
+              get().fetchTournamentById(activeId);
+            } else {
+              get().fetchTournaments();
+            }
           }
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.error('Realtime subscription issue:', status, err);
@@ -149,50 +159,126 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     };
   },
 
-  init: async () => {
-    // Fetch all data
-    const [tRes, pRes, tpRes, mRes] = await Promise.all([
-      supabase.from('tournaments').select('*'),
-      supabase.from('players').select('*'),
-      supabase.from('tournament_participants').select('*'),
-      supabase.from('matches').select('*')
-    ]);
+  fetchTournaments: async () => {
+    if (inFlightFetchTournaments) {
+      return inFlightFetchTournaments;
+    }
 
-    if (tRes.error) console.error(tRes.error);
-    if (pRes.error) console.error(pRes.error);
-    if (tpRes.error) console.error(tpRes.error);
-    if (mRes.error) console.error(mRes.error);
+    inFlightFetchTournaments = (async () => {
+      try {
+        const [tRes, tpRes, pRes] = await Promise.all([
+          supabase.from('tournaments').select('*').order('created_at', { ascending: false }),
+          supabase.from('tournament_participants').select('*'),
+          supabase.from('players').select('*')
+        ]);
 
-    const dbTournaments = tRes.data || [];
-    const dbPlayers = pRes.data || [];
-    const dbTp = tpRes.data || [];
-    const dbMatches = mRes.data || [];
+        if (tRes.error) console.error('Error fetching tournaments:', tRes.error);
+        if (tpRes.error) console.error('Error fetching participants:', tpRes.error);
+        if (pRes.error) console.error('Error fetching players:', pRes.error);
 
-    const assembledTournaments: Tournament[] = dbTournaments.map((t: any) => {
-      const tps = dbTp.filter((tp: any) => tp.tournament_id === t.id);
-      const playersForT = tps.map((tp: any) => {
-        const p = dbPlayers.find((p: any) => p.id === tp.player_id);
-        return {
-          id: p?.id || tp.player_id,
-          name: p?.name || 'Unknown',
-          active: tp.active
+        const dbTournaments = tRes.data || [];
+        const dbPlayers = pRes.data || [];
+        const dbTp = tpRes.data || [];
+
+        const assembledTournaments: Tournament[] = dbTournaments.map((t: any) => {
+          const tps = dbTp.filter((tp: any) => tp.tournament_id === t.id);
+          const playersForT = tps.map((tp: any) => {
+            const p = dbPlayers.find((p: any) => p.id === tp.player_id);
+            return {
+              id: p?.id || tp.player_id,
+              name: p?.name || 'Unknown',
+              active: tp.active
+            };
+          });
+
+          return {
+            id: t.id,
+            name: t.name,
+            createdAt: Number(t.created_at),
+            totalCourts: t.total_courts || 1,
+            status: t.status,
+            players: playersForT,
+            matches: [],
+            format: t.format || 'americano',
+            pointsMode: (t.points_mode as 'total21' | 'free') || 'total21'
+          };
+        });
+
+        set({ tournaments: assembledTournaments, globalPlayers: dbPlayers, isInitialized: true });
+      } finally {
+        inFlightFetchTournaments = null;
+      }
+    })();
+
+    return inFlightFetchTournaments;
+  },
+
+  fetchTournamentById: async (id: string) => {
+    if (inFlightFetchById[id]) {
+      return inFlightFetchById[id];
+    }
+
+    inFlightFetchById[id] = (async () => {
+      try {
+        const [tRes, tpRes, mRes, pRes] = await Promise.all([
+          supabase.from('tournaments').select('*').eq('id', id).single(),
+          supabase.from('tournament_participants').select('*').eq('tournament_id', id),
+          supabase.from('matches').select('*').eq('tournament_id', id).order('round', { ascending: true }),
+          supabase.from('players').select('*')
+        ]);
+
+        if (tRes.error) {
+          console.error('Error fetching tournament by id:', tRes.error);
+          return;
+        }
+
+        const t = tRes.data;
+        const dbTp = tpRes.data || [];
+        const dbMatches = mRes.data || [];
+        const dbPlayers = pRes.data || [];
+
+        const playersForT = dbTp.map((tp: any) => {
+          const p = dbPlayers.find((p: any) => p.id === tp.player_id);
+          return {
+            id: p?.id || tp.player_id,
+            name: p?.name || 'Unknown',
+            active: tp.active
+          };
+        });
+
+        const fetchedTournament: Tournament = {
+          id: t.id,
+          name: t.name,
+          createdAt: Number(t.created_at),
+          totalCourts: t.total_courts || 1,
+          status: t.status,
+          players: playersForT,
+          matches: dbMatches,
+          format: t.format || 'americano',
+          pointsMode: (t.points_mode as 'total21' | 'free') || 'total21'
         };
-      });
 
-      return {
-        id: t.id,
-        name: t.name,
-        createdAt: Number(t.created_at),
-        totalCourts: t.total_courts || 1,
-        status: t.status,
-        players: playersForT,
-        matches: dbMatches.filter((m: any) => m.tournament_id === t.id),
-        format: t.format || 'americano',
-        pointsMode: (t.points_mode as 'total21' | 'free') || 'total21'
-      };
-    });
+        set((s) => {
+          const exists = s.tournaments.some(curr => curr.id === id);
+          return {
+            tournaments: exists
+              ? s.tournaments.map(curr => curr.id === id ? fetchedTournament : curr)
+              : [...s.tournaments, fetchedTournament],
+            globalPlayers: dbPlayers,
+            activeTournamentId: id,
+            isInitialized: true
+          };
+        });
+      } finally {
+        delete inFlightFetchById[id];
+      }
+    })();
 
-    set({ tournaments: assembledTournaments, globalPlayers: dbPlayers, isInitialized: true });
+    return inFlightFetchById[id];
+  },
+
+  init: async () => {
+    await get().fetchTournaments();
   },
 
   createTournament: async (name, totalCourts, format, pointsMode) => {

@@ -21,24 +21,44 @@ function TournamentView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'matches' | 'leaderboard'>('dashboard');
-  const { tournaments, setActiveTournament } = useTournamentStore();
+  const [loading, setLoading] = useState(true);
+  const { tournaments } = useTournamentStore();
 
   useEffect(() => {
-    setActiveTournament(id || null);
+    if (id) {
+      useTournamentStore.getState().setActiveTournament(id);
+      setLoading(true);
+      useTournamentStore.getState().fetchTournamentById(id).finally(() => setLoading(false));
+    }
     return () => {
-      setActiveTournament(null);
+      useTournamentStore.getState().setActiveTournament(null);
     };
-  }, [id, setActiveTournament]);
+  }, [id]);
 
   useEffect(() => {
-    console.log('subscribing...');
     const unsubscribe = useTournamentStore.getState().subscribeToRealtime();
-    useTournamentStore.getState().init();
-
     return () => unsubscribe();
   }, []);
 
   const activeTournament = tournaments.find(t => t.id === id);
+
+  if (loading && !activeTournament) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 'var(--space-4)',
+        }}
+      >
+        <div className="spinner" />
+        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' }}>Loading tournament…</span>
+      </div>
+    );
+  }
 
   if (!activeTournament) {
     return <Navigate to="/" replace />;
@@ -133,32 +153,6 @@ function TournamentView() {
 }
 
 function App() {
-  const { init, isInitialized } = useTournamentStore();
-
-  useEffect(() => {
-    if (!isInitialized) {
-      init();
-    }
-  }, [init, isInitialized]);
-
-  if (!isInitialized) {
-    return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 'var(--space-4)',
-        }}
-      >
-        <div className="spinner" />
-        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' }}>Loading tournaments…</span>
-      </div>
-    );
-  }
-
   return (
     <Routes>
       <Route path="/" element={<HomeScreen />} />
