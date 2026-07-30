@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useTournamentStore } from '../store/tournamentStore';
 import { calculateLeaderboard } from '../lib/leaderboard';
-import { Trophy, ArrowUpDown, Trash2 } from 'lucide-react';
+import { Trophy, ArrowUpDown, Trash2, Download } from 'lucide-react';
 import type { Player } from '../lib/types';
 import { ConfirmModal } from './ConfirmModal';
+import { exportLeaderboardPNG } from '../lib/exportLeaderboardCanvas';
 
 const SORT_LABELS: Record<string, string> = {
   wins: 'Wins',
@@ -38,6 +39,12 @@ export function Leaderboard() {
     }
   };
 
+  const handleExportPNG = () => {
+    if (activeTournament && leaderboard.length > 0) {
+      exportLeaderboardPNG(activeTournament, leaderboard);
+    }
+  };
+
   if (leaderboard.length === 0) {
     return (
       <div className="glass-card empty-state">
@@ -56,17 +63,31 @@ export function Leaderboard() {
           Leaderboard
         </h2>
 
-        <button
-          id="leaderboard-sort-btn"
-          className="btn btn-outline"
-          onClick={cycleSortBy}
-          title="Toggle sorting"
-          aria-label={`Currently sorted by ${SORT_LABELS[sortBy]}. Click to change.`}
-          style={{ fontSize: 'var(--font-size-sm)' }}
-        >
-          <ArrowUpDown size={14} />
-          Sort: {SORT_LABELS[sortBy]}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            id="export-leaderboard-btn"
+            className="btn btn-primary"
+            onClick={handleExportPNG}
+            title="Download PNG with transparent background"
+            aria-label="Export full leaderboard as transparent PNG image"
+            style={{ fontSize: 'var(--font-size-xs)', padding: '6px 12px', gap: '6px' }}
+          >
+            <Download size={14} />
+            Export PNG
+          </button>
+
+          <button
+            id="leaderboard-sort-btn"
+            className="btn btn-outline"
+            onClick={cycleSortBy}
+            title="Toggle sorting"
+            aria-label={`Currently sorted by ${SORT_LABELS[sortBy]}. Click to change.`}
+            style={{ fontSize: 'var(--font-size-xs)', padding: '6px 12px', gap: '6px' }}
+          >
+            <ArrowUpDown size={14} />
+            Sort: {SORT_LABELS[sortBy]}
+          </button>
+        </div>
       </div>
 
       {/* ── Table ── */}
