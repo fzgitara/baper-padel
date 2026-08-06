@@ -252,7 +252,7 @@ export function generateRounds(
       return (rankMap[a.id] ?? 0) - (rankMap[b.id] ?? 0);
     });
 
-    let available = [...playersToPair];
+    const available: Player[] = [...playersToPair];
     const roundMatches: Match[] = [];
 
     while (available.length >= 4) {

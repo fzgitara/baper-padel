@@ -38,4 +38,9 @@ export interface TournamentStoreState {
   activeTournamentId: string | null;
   isInitialized: boolean;
   connectionStatus: 'connecting' | 'connected' | 'error' | 'disconnected';
+  // Lazy loading pagination state for the tournament list
+  tournamentsLoadedCount: number;
+  hasMoreTournaments: boolean;
+  isLoadingMore: boolean;
 }
+

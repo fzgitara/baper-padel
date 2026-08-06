@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTournamentStore } from '../store/tournamentStore';
 import { Swords, Check, Shuffle, Play, ArrowLeftRight } from 'lucide-react';
+import type { Match, Player } from '../lib/types';
 
 export function MatchList() {
   const { tournaments, activeTournamentId, updateScore, randomizePendingMatches, swapMatchPlayer, generateSingleMatch } = useTournamentStore();
@@ -128,7 +129,6 @@ export function MatchList() {
                       key={match.id}
                       match={match}
                       players={players.filter(p => p.active)}
-                      getPlayerName={getPlayerName}
                       getPlayerLabel={getPlayerLabel}
                       hasPartneredBefore={hasPartneredBefore}
                       pointsMode={pointsMode}
@@ -261,7 +261,17 @@ export function MatchList() {
 }
 
 /* ─── MatchCard ──────────────────────────────────────────────────────────────── */
-function MatchCard({ match, players, getPlayerLabel, hasPartneredBefore, pointsMode, onSave, onSwap }: any) {
+interface MatchCardProps {
+  match: Match;
+  players: Player[];
+  getPlayerLabel: (id: string) => string;
+  hasPartneredBefore: (a: string, b: string) => boolean;
+  pointsMode: 'total21' | 'free';
+  onSave: (s1: number, s2: number) => void;
+  onSwap: (matchId: string, oldPlayerId: string, newPlayerId: string) => Promise<void>;
+}
+
+function MatchCard({ match, players, getPlayerLabel, hasPartneredBefore, pointsMode, onSave, onSwap }: MatchCardProps) {
   const [s1, setS1] = useState('');
   const [s2, setS2] = useState('');
 
@@ -317,7 +327,7 @@ function MatchCard({ match, players, getPlayerLabel, hasPartneredBefore, pointsM
       onBlur={(e) => (e.target.style.borderBottomColor = 'rgba(255,255,255,0.2)')}
       title="Click to swap player"
     >
-      {players.map((p: any) => (
+      {players.map((p: Player) => (
         <option key={p.id} value={p.id} style={{ color: '#000', background: '#fff' }}>
           {getPlayerLabel(p.id)}
         </option>

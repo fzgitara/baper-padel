@@ -9,7 +9,7 @@ export function HomeScreen() {
   const [totalCourts, setTotalCourts] = useState(1);
   const [format, setFormat] = useState<'americano' | 'mexicano'>('americano');
   const [pointsMode, setPointsMode] = useState<'total21' | 'free'>('total21');
-  const { tournaments, createTournament, deleteTournament } = useTournamentStore();
+  const { tournaments, createTournament, deleteTournament, loadMoreTournaments, hasMoreTournaments, isLoadingMore } = useTournamentStore();
 
   useEffect(() => {
     useTournamentStore.getState().fetchTournaments();
@@ -214,6 +214,27 @@ export function HomeScreen() {
                   </div>
                 </div>
               ))}
+          </div>
+        )}
+
+        {/* ── Load More ── */}
+        {tournaments.length > 0 && hasMoreTournaments && (
+          <div style={{ textAlign: 'center', marginTop: 'var(--space-6)' }}>
+            <button
+              id="load-more-tournaments-btn"
+              className="btn btn-outline"
+              onClick={loadMoreTournaments}
+              disabled={isLoadingMore}
+            >
+              {isLoadingMore ? (
+                <>
+                  <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                  Loading…
+                </>
+              ) : (
+                'Load More'
+              )}
+            </button>
           </div>
         )}
       </div>

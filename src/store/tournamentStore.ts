@@ -6,7 +6,8 @@ import { supabase } from '../utils/supabase';
 
 interface TournamentActions {
   init: () => Promise<void>;
-  fetchTournaments: () => Promise<void>;
+  fetchTournaments: (opts?: { limit?: number }) => Promise<void>;
+  loadMoreTournaments: () => Promise<void>;
   fetchTournamentById: (id: string) => Promise<void>;
   createTournament: (name: string, totalCourts: number, format: 'americano' | 'mexicano', pointsMode: 'total21' | 'free') => Promise<string>;
   deleteTournament: (id: string) => Promise<void>;
@@ -29,7 +30,30 @@ interface TournamentActions {
   subscribeToRealtime: () => () => void;
 }
 
+const PAGE_SIZE = 10;
+
+// ─── Supabase row shapes (concise; used for realtime & fetch assembly) ──────
+interface TournamentRow {
+  id: string;
+  name: string;
+  created_at: number | string;
+  total_courts?: number;
+  status: string;
+  format?: string;
+  points_mode?: string;
+}
+interface PlayerRow {
+  id: string;
+  name: string;
+}
+interface ParticipantRow {
+  tournament_id: string;
+  player_id: string;
+  active: boolean;
+}
+
 let inFlightFetchTournaments: Promise<void> | null = null;
+let inFlightLoadMore: Promise<void> | null = null;
 const inFlightFetchById: Record<string, Promise<void> | undefined> = {};
 
 export const useTournamentStore = create<TournamentStoreState & TournamentActions>((set, get) => ({
@@ -38,6 +62,9 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
   activeTournamentId: null,
   isInitialized: false,
   connectionStatus: 'connecting',
+  tournamentsLoadedCount: 0,
+  hasMoreTournaments: true,
+  isLoadingMore: false,
 
   subscribeToRealtime: () => {
     set({ connectionStatus: 'connecting' });
@@ -53,15 +80,15 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
                 activeTournamentId: s.activeTournamentId === payload.old.id ? null : s.activeTournamentId
               };
             }
-            const row: any = payload.new;
+            const row = payload.new as TournamentRow;
             const exists = s.tournaments.some(t => t.id === row.id);
             const patch = {
               id: row.id,
               name: row.name,
               createdAt: Number(row.created_at),
               totalCourts: row.total_courts || 1,
-              status: row.status,
-              format: row.format || 'americano',
+              status: row.status as 'setup' | 'active' | 'completed',
+              format: (row.format as 'americano' | 'mexicano') || 'americano',
               pointsMode: (row.points_mode as 'total21' | 'free') || 'total21',
             };
             return {
@@ -78,7 +105,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
             if (payload.eventType === 'DELETE') {
               return { globalPlayers: s.globalPlayers.filter(p => p.id !== payload.old.id) };
             }
-            const row: any = payload.new;
+            const row = payload.new as PlayerRow;
             const exists = s.globalPlayers.some(p => p.id === row.id);
             return {
               globalPlayers: exists
@@ -91,7 +118,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tournament_participants' },
         (payload) => {
           set((s) => {
-            const row: any = payload.eventType === 'DELETE' ? payload.old : payload.new;
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as ParticipantRow;
             const gp = s.globalPlayers.find(p => p.id === row.player_id);
             return {
               tournaments: s.tournaments.map(t => {
@@ -114,7 +141,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' },
         (payload) => {
           set((s) => {
-            const row: any = payload.eventType === 'DELETE' ? payload.old : payload.new;
+            const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as Match;
             return {
               tournaments: s.tournaments.map(t => {
                 if (t.id !== row.tournament_id) return t;
@@ -159,31 +186,42 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     };
   },
 
-  fetchTournaments: async () => {
+  fetchTournaments: async (opts?: { limit?: number }) => {
     if (inFlightFetchTournaments) {
       return inFlightFetchTournaments;
     }
 
     inFlightFetchTournaments = (async () => {
       try {
-        const [tRes, tpRes, pRes] = await Promise.all([
-          supabase.from('tournaments').select('*').order('created_at', { ascending: false }),
-          supabase.from('tournament_participants').select('*'),
+        const limit = opts?.limit ?? PAGE_SIZE;
+
+        const [tRes, pRes] = await Promise.all([
+          supabase
+            .from('tournaments')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .range(0, limit - 1),
           supabase.from('players').select('*')
         ]);
 
         if (tRes.error) console.error('Error fetching tournaments:', tRes.error);
-        if (tpRes.error) console.error('Error fetching participants:', tpRes.error);
         if (pRes.error) console.error('Error fetching players:', pRes.error);
 
-        const dbTournaments = tRes.data || [];
-        const dbPlayers = pRes.data || [];
-        const dbTp = tpRes.data || [];
+        const dbTournaments = (tRes.data as TournamentRow[] | null) || [];
+        const dbPlayers = (pRes.data as PlayerRow[] | null) || [];
+        const ids = dbTournaments.map((t) => t.id);
 
-        const assembledTournaments: Tournament[] = dbTournaments.map((t: any) => {
-          const tps = dbTp.filter((tp: any) => tp.tournament_id === t.id);
-          const playersForT = tps.map((tp: any) => {
-            const p = dbPlayers.find((p: any) => p.id === tp.player_id);
+        let dbTp: ParticipantRow[] = [];
+        if (ids.length) {
+          const tpRes = await supabase.from('tournament_participants').select('*').in('tournament_id', ids);
+          if (tpRes.error) console.error('Error fetching participants:', tpRes.error);
+          dbTp = (tpRes.data as ParticipantRow[] | null) || [];
+        }
+
+        const assembledTournaments: Tournament[] = dbTournaments.map((t) => {
+          const tps = dbTp.filter((tp) => tp.tournament_id === t.id);
+          const playersForT = tps.map((tp) => {
+            const p = dbPlayers.find((p) => p.id === tp.player_id);
             return {
               id: p?.id || tp.player_id,
               name: p?.name || 'Unknown',
@@ -196,21 +234,106 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
             name: t.name,
             createdAt: Number(t.created_at),
             totalCourts: t.total_courts || 1,
-            status: t.status,
+            status: t.status as 'setup' | 'active' | 'completed',
             players: playersForT,
             matches: [],
-            format: t.format || 'americano',
+            format: (t.format as 'americano' | 'mexicano') || 'americano',
             pointsMode: (t.points_mode as 'total21' | 'free') || 'total21'
           };
         });
 
-        set({ tournaments: assembledTournaments, globalPlayers: dbPlayers, isInitialized: true });
+        set({
+          tournaments: assembledTournaments,
+          globalPlayers: dbPlayers,
+          isInitialized: true,
+          tournamentsLoadedCount: assembledTournaments.length,
+          hasMoreTournaments: assembledTournaments.length >= limit,
+          isLoadingMore: false
+        });
       } finally {
         inFlightFetchTournaments = null;
       }
     })();
 
     return inFlightFetchTournaments;
+  },
+
+  loadMoreTournaments: async () => {
+    if (inFlightLoadMore) return inFlightLoadMore;
+
+    const state = get();
+    if (!state.hasMoreTournaments) return;
+
+    set({ isLoadingMore: true });
+
+    inFlightLoadMore = (async () => {
+      try {
+        const offset = get().tournamentsLoadedCount;
+
+        const [tRes, pRes] = await Promise.all([
+          supabase
+            .from('tournaments')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .range(offset, offset + PAGE_SIZE - 1),
+          supabase.from('players').select('*')
+        ]);
+
+        if (tRes.error) console.error('Error fetching tournaments:', tRes.error);
+        if (pRes.error) console.error('Error fetching players:', pRes.error);
+
+        const dbTournaments = (tRes.data as TournamentRow[] | null) || [];
+        const dbPlayers = (pRes.data as PlayerRow[] | null) || [];
+        const ids = dbTournaments.map((t) => t.id);
+
+        let dbTp: ParticipantRow[] = [];
+        if (ids.length) {
+          const tpRes = await supabase.from('tournament_participants').select('*').in('tournament_id', ids);
+          if (tpRes.error) console.error('Error fetching participants:', tpRes.error);
+          dbTp = (tpRes.data as ParticipantRow[] | null) || [];
+        }
+
+        const assembledTournaments: Tournament[] = dbTournaments.map((t) => {
+          const tps = dbTp.filter((tp) => tp.tournament_id === t.id);
+          const playersForT = tps.map((tp) => {
+            const p = dbPlayers.find((p) => p.id === tp.player_id);
+            return {
+              id: p?.id || tp.player_id,
+              name: p?.name || 'Unknown',
+              active: tp.active
+            };
+          });
+
+          return {
+            id: t.id,
+            name: t.name,
+            createdAt: Number(t.created_at),
+            totalCourts: t.total_courts || 1,
+            status: t.status as 'setup' | 'active' | 'completed',
+            players: playersForT,
+            matches: [],
+            format: (t.format as 'americano' | 'mexicano') || 'americano',
+            pointsMode: (t.points_mode as 'total21' | 'free') || 'total21'
+          };
+        });
+
+        set((s) => {
+          const existingIds = new Set(s.tournaments.map(t => t.id));
+          const newOnes = assembledTournaments.filter(t => !existingIds.has(t.id));
+          return {
+            tournaments: [...s.tournaments, ...newOnes],
+            globalPlayers: dbPlayers,
+            tournamentsLoadedCount: s.tournamentsLoadedCount + assembledTournaments.length,
+            hasMoreTournaments: assembledTournaments.length >= PAGE_SIZE,
+            isLoadingMore: false
+          };
+        });
+      } finally {
+        inFlightLoadMore = null;
+      }
+    })();
+
+    return inFlightLoadMore;
   },
 
   fetchTournamentById: async (id: string) => {
@@ -227,18 +350,19 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
           supabase.from('players').select('*')
         ]);
 
-        if (tRes.error) {
-          console.error('Error fetching tournament by id:', tRes.error);
+        const t = tRes.data as TournamentRow | null;
+
+        if (tRes.error || !t) {
+          if (tRes.error) console.error('Error fetching tournament by id:', tRes.error);
           return;
         }
 
-        const t = tRes.data;
-        const dbTp = tpRes.data || [];
-        const dbMatches = mRes.data || [];
-        const dbPlayers = pRes.data || [];
+        const dbTp = (tpRes.data as ParticipantRow[] | null) || [];
+        const dbMatches = (mRes.data as Match[] | null) || [];
+        const dbPlayers = (pRes.data as PlayerRow[] | null) || [];
 
-        const playersForT = dbTp.map((tp: any) => {
-          const p = dbPlayers.find((p: any) => p.id === tp.player_id);
+        const playersForT = dbTp.map((tp: ParticipantRow) => {
+          const p = dbPlayers.find((p) => p.id === tp.player_id);
           return {
             id: p?.id || tp.player_id,
             name: p?.name || 'Unknown',
@@ -251,10 +375,10 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
           name: t.name,
           createdAt: Number(t.created_at),
           totalCourts: t.total_courts || 1,
-          status: t.status,
+          status: t.status as 'setup' | 'active' | 'completed',
           players: playersForT,
           matches: dbMatches,
-          format: t.format || 'americano',
+          format: (t.format as 'americano' | 'mexicano') || 'americano',
           pointsMode: (t.points_mode as 'total21' | 'free') || 'total21'
         };
 

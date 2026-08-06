@@ -264,7 +264,7 @@ function drawRoundedRect(
   h: number,
   radii: number | { tl: number; tr: number; br: number; bl: number }
 ) {
-  let tl = 0, tr = 0, br = 0, bl = 0;
+  let tl: number, tr: number, br: number, bl: number;
   if (typeof radii === 'number') {
     tl = tr = br = bl = radii;
   } else {
@@ -289,7 +289,7 @@ function drawRoundedRect(
 
 function isMobileDevice(): boolean {
   // Modern Client Hints API — most reliable, Chromium browsers
-  const uaData = (navigator as any).userAgentData;
+  const uaData = (navigator as Navigator & { userAgentData?: { mobile: boolean } }).userAgentData;
   if (uaData && typeof uaData.mobile === 'boolean') {
     return uaData.mobile;
   }

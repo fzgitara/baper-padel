@@ -27,7 +27,6 @@ function TournamentView() {
   useEffect(() => {
     if (id) {
       useTournamentStore.getState().setActiveTournament(id);
-      setLoading(true);
       useTournamentStore.getState().fetchTournamentById(id).finally(() => setLoading(false));
     }
     return () => {
