@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTournamentStore } from '../store/tournamentStore';
-import { Swords, Check, Shuffle, Play, ArrowLeftRight } from 'lucide-react';
+import { Swords, Check, Shuffle, Play, ClipboardList } from 'lucide-react';
+import { MatchSwapper } from './MatchSwapper';
 import type { Match, Player, FixedTeam } from '../lib/types';
 
 export function MatchList() {
+  const navigate = useNavigate();
   const { tournaments, activeTournamentId, updateScore, randomizePendingMatches, swapMatchPlayer, swapMatchTeam, generateSingleMatch } = useTournamentStore();
   const activeTournament = tournaments.find(t => t.id === activeTournamentId);
 
@@ -77,7 +80,7 @@ export function MatchList() {
             Pending Matches
           </h2>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
             {status === 'active' && (
               <button
                 id="generate-match-btn"
@@ -101,6 +104,15 @@ export function MatchList() {
               </button>
             )}
           </div>
+          <button
+              id="scoreboard-btn"
+              className="btn btn-outline"
+              onClick={() => navigate(`/tournament/${activeTournamentId}/scoreboard`)}
+              title="Open the live scoreboard"
+            >
+              <ClipboardList size={15} />
+              <span>Scoreboard</span>
+            </button>
         </div>
 
         {pendingMatches.length === 0 ? (
@@ -328,88 +340,6 @@ function MatchCard({ match, players, teams, partnerMode, getPlayerLabel, hasPart
     }
   };
 
-  // Find a fixed team that contains the given two players.
-  const findTeamByPlayers = (p1: string, p2: string): FixedTeam | undefined =>
-    teams.find(
-      t =>
-        (t.playerIds[0] === p1 && t.playerIds[1] === p2) ||
-        (t.playerIds[0] === p2 && t.playerIds[1] === p1)
-    );
-
-  const renderPlayerSelect = (playerId: string) => (
-    <select
-      value={playerId}
-      onChange={(e) => onSwap(match.id, playerId, e.target.value)}
-      style={{
-        background: 'transparent',
-        border: 'none',
-        borderBottom: '1px dashed rgba(255,255,255,0.2)',
-        color: 'var(--text-primary)',
-        fontSize: 'var(--font-size-sm)',
-        fontWeight: 500,
-        outline: 'none',
-        cursor: 'pointer',
-        width: '100%',
-        padding: '3px 0',
-        fontFamily: "'Outfit', sans-serif",
-        transition: 'border-color var(--transition-fast)',
-      }}
-      onFocus={(e) => (e.target.style.borderBottomColor = 'var(--accent-primary)')}
-      onBlur={(e) => (e.target.style.borderBottomColor = 'rgba(255,255,255,0.2)')}
-      title="Click to swap player"
-    >
-      {players.map((p: Player) => (
-        <option key={p.id} value={p.id} style={{ color: '#000', background: '#fff' }}>
-          {getPlayerLabel(p.id)}
-        </option>
-      ))}
-    </select>
-  );
-
-  // Fixed partner: render a read-only partnership under a swapable team name.
-  const renderFixedTeamSlot = (p1: string, p2: string) => {
-    const currentTeam = findTeamByPlayers(p1, p2);
-    const members = [p1, p2].filter(Boolean);
-
-    return (
-      <div>
-        <div style={{ marginBottom: 'var(--space-1)' }}>
-          <span style={{ fontSize: '0.7rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
-            {currentTeam?.name || 'Team'}
-          </span>
-        </div>
-        {members.map(pid => (
-          <div key={pid} style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {getPlayerLabel(pid)}
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  // Fixed partner: a select to swap which team occupies this side (opponent).
-  const renderFixedTeamSelect = (current: FixedTeam | undefined, excludeId?: string) => (
-    <select
-      className="input"
-      disabled={match.status !== 'pending'}
-      value={current?.id || ''}
-      onChange={(e) => {
-        const next = teams.find(t => t.id === e.target.value);
-        if (next && current) {
-          onSwapTeam(match.id, current.playerIds, next.playerIds);
-        }
-      }}
-      style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}
-      title="Click to change team on this side"
-    >
-      {teams
-        .filter(t => t.playerIds.length === 2 && t.id !== excludeId)
-        .map(t => (
-          <option key={t.id} value={t.id}>{t.name}</option>
-        ))}
-    </select>
-  );
-
   return (
     <div
       style={{
@@ -432,50 +362,17 @@ function MatchCard({ match, players, teams, partnerMode, getPlayerLabel, hasPart
       {/* Teams + Score — responsive stacking */}
       <div id="match-card-body" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 'var(--space-3)' }}>
 
-        {/* Team 1 (left-aligned) */}
-        <div style={{ textAlign: 'left' }}>
-          {partnerMode === 'fixed'
-            ? (
-                <div style={{ textAlign: 'left' }}>
-                  {renderFixedTeamSlot(match.team1[0], match.team1[1])}
-                  <div style={{ marginTop: 'var(--space-2)' }}>
-                    {renderFixedTeamSelect(
-                      findTeamByPlayers(match.team1[0], match.team1[1]),
-                      findTeamByPlayers(match.team2[0], match.team2[1])?.id
-                    )}
-                  </div>
-                </div>
-              )
-            : (
-                <>
-                  {renderPlayerSelect(match.team1[0])}
-                  <div style={{ marginTop: 'var(--space-2)' }}>{renderPlayerSelect(match.team1[1])}</div>
-                  {hasPartneredBefore(match.team1[0], match.team1[1]) && (
-                    <div style={{ marginTop: 'var(--space-1)', textAlign: 'left' }}>
-                      <span
-                        title="These players have partnered before"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                          fontSize: '0.65rem',
-                          background: 'rgba(245, 158, 11, 0.12)',
-                          color: 'var(--warn)',
-                          border: '1px solid rgba(245,158,11,0.25)',
-                          borderRadius: 'var(--radius-sm)',
-                          padding: '1px 6px',
-                          fontWeight: 600,
-                        }}
-                      >
-                        <ArrowLeftRight size={9} />
-                        repeat
-                      </span>
-                    </div>
-                  )}
-                </>
-              )
-          }
-        </div>
+        <MatchSwapper
+          match={match}
+          players={players}
+          teams={teams}
+          partnerMode={partnerMode}
+          getPlayerLabel={getPlayerLabel}
+          hasPartneredBefore={hasPartneredBefore}
+          onSwap={onSwap}
+          onSwapTeam={onSwapTeam}
+          side="team1"
+        />
 
         {/* Score inputs */}
         <div className="flex items-center gap-2" style={{ flexShrink: 0 }}>
@@ -504,50 +401,17 @@ function MatchCard({ match, players, teams, partnerMode, getPlayerLabel, hasPart
           />
         </div>
 
-        {/* Team 2 (right-aligned) */}
-        <div style={{ textAlign: 'right' }}>
-          {partnerMode === 'fixed'
-            ? (
-                <div style={{ textAlign: 'right' }}>
-                  {renderFixedTeamSlot(match.team2[0], match.team2[1])}
-                  <div style={{ marginTop: 'var(--space-2)' }}>
-                    {renderFixedTeamSelect(
-                      findTeamByPlayers(match.team2[0], match.team2[1]),
-                      findTeamByPlayers(match.team1[0], match.team1[1])?.id
-                    )}
-                  </div>
-                </div>
-              )
-            : (
-                <>
-                  {renderPlayerSelect(match.team2[0])}
-                  <div style={{ marginTop: 'var(--space-2)' }}>{renderPlayerSelect(match.team2[1])}</div>
-                  {hasPartneredBefore(match.team2[0], match.team2[1]) && (
-                    <div style={{ marginTop: 'var(--space-1)' }}>
-                      <span
-                        title="These players have partnered before"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                          fontSize: '0.65rem',
-                          background: 'rgba(245, 158, 11, 0.12)',
-                          color: 'var(--warn)',
-                          border: '1px solid rgba(245,158,11,0.25)',
-                          borderRadius: 'var(--radius-sm)',
-                          padding: '1px 6px',
-                          fontWeight: 600,
-                        }}
-                      >
-                        <ArrowLeftRight size={9} />
-                        repeat
-                      </span>
-                    </div>
-                  )}
-                </>
-              )
-          }
-        </div>
+        <MatchSwapper
+          match={match}
+          players={players}
+          teams={teams}
+          partnerMode={partnerMode}
+          getPlayerLabel={getPlayerLabel}
+          hasPartneredBefore={hasPartneredBefore}
+          onSwap={onSwap}
+          onSwapTeam={onSwapTeam}
+          side="team2"
+        />
       </div>
 
       {/* Save button */}

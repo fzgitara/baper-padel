@@ -7,6 +7,7 @@ import { TeamsSetup } from './components/TeamsSetup';
 import { MatchList } from './components/MatchList';
 import { Leaderboard } from './components/Leaderboard';
 import { HomeScreen } from './components/HomeScreen';
+import { Scoreboard } from './components/Scoreboard';
 import { ArrowLeft } from 'lucide-react';
 import './App.css';
 
@@ -158,9 +159,11 @@ function App() {
     <Routes>
       <Route path="/" element={<HomeScreen />} />
       <Route path="/tournament/:id" element={<TournamentView />} />
+      <Route path="/tournament/:id/scoreboard" element={<Scoreboard />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
 export default App;
+
