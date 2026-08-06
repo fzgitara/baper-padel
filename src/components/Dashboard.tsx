@@ -7,10 +7,12 @@ export function Dashboard() {
 
   if (!activeTournament) return null;
 
-  const { status, players, matches, totalCourts, format, pointsMode } = activeTournament;
+  const { status, players, matches, totalCourts, format, pointsMode, partnerMode, teams } = activeTournament;
   const activePlayers = players.filter(p => p.active).length;
   const totalMatches = matches.length;
   const completedMatches = matches.filter(m => m.status === 'completed').length;
+  const readyTeams = (teams || []).filter(t => t.playerIds.length === 2).length;
+  const canStart = partnerMode === 'fixed' ? readyTeams >= 2 : activePlayers >= 4;
 
   return (
     <div className="glass-card flex flex-col gap-6">
@@ -27,6 +29,9 @@ export function Dashboard() {
         <span className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)', border: '1px solid var(--border-light)', textTransform: 'capitalize' }}>
           {format}
         </span>
+        <span className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)', border: '1px solid var(--border-light)', textTransform: 'capitalize' }}>
+          {(partnerMode || 'rotating') === 'fixed' ? 'Fixed' : 'Rotating'}
+        </span>
         <span className={`badge ${status === 'active' ? 'badge-completed' : 'badge-pending'}`}>
           {status}
         </span>
@@ -34,10 +39,12 @@ export function Dashboard() {
 
       {/* ── Stat Tiles ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 'var(--space-3)' }}>
-        {/* Players */}
+        {/* Players / Teams */}
         <div className="stat-tile">
-          <div className="stat-value" style={{ color: 'var(--accent-primary)' }}>{activePlayers}</div>
-          <div className="stat-label">Players</div>
+          <div className="stat-value" style={{ color: 'var(--accent-primary)' }}>
+            {partnerMode === 'fixed' ? readyTeams : activePlayers}
+          </div>
+          <div className="stat-label">{partnerMode === 'fixed' ? 'Ready Teams' : 'Players'}</div>
         </div>
 
         {/* Courts (editable) */}
@@ -80,7 +87,7 @@ export function Dashboard() {
         {/* Points mode */}
         <div className="stat-tile">
           <div className="stat-value" style={{ fontSize: 'var(--font-size-xl)', color: 'var(--text-primary)' }}>
-            {pointsMode === 'free' ? 'Free' : '21'}
+            {pointsMode === 'default' ? 'Default' : '21'}
           </div>
           <div className="stat-label">Points</div>
         </div>
@@ -93,10 +100,12 @@ export function Dashboard() {
             id="start-tournament-btn"
             className="btn btn-primary w-full"
             onClick={startTournament}
-            disabled={activePlayers < 4}
+            disabled={!canStart}
           >
             <Play size={18} />
-            {activePlayers < 4 ? `Need ${4 - activePlayers} more player${4 - activePlayers !== 1 ? 's' : ''}` : 'Start Tournament'}
+            {partnerMode === 'fixed'
+              ? (readyTeams >= 2 ? 'Start Tournament' : `Need ${2 - readyTeams} more ready team${2 - readyTeams !== 1 ? 's' : ''}`)
+              : (activePlayers < 4 ? `Need ${4 - activePlayers} more player${4 - activePlayers !== 1 ? 's' : ''}` : 'Start Tournament')}
           </button>
         )}
 

@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Match, Player } from './types';
+import type { Match, Player, FixedTeam } from './types';
 import { calculateLeaderboard } from './leaderboard';
 
 function shuffle<T>(array: T[]): T[] {
@@ -456,4 +456,166 @@ export function generateSingleMatch(
       status: 'pending',
     };
   }
+}
+
+/* ── FIXED PARTNER MODE ──────────────────────────────────────────────────────
+ * Players are grouped into fixed partnerships ("teams"). Matches always pair
+ * one fixed team against another, so partners never change. A full schedule is
+ * a round-robin: every 2-player team plays every other 2-player team once.
+ */
+
+/** Stable team-vs-team key for scheduling. */
+function teamPairKey(teamAId: string, teamBId: string): string {
+  return [teamAId, teamBId].sort().join('-');
+}
+
+/** Given two player ids, find the FixedTeam that contains them (either order). */
+function findTeamByPlayers(teams: FixedTeam[], p1: string, p2: string): FixedTeam | undefined {
+  return teams.find(
+    t =>
+      (t.playerIds[0] === p1 && t.playerIds[1] === p2) ||
+      (t.playerIds[0] === p2 && t.playerIds[1] === p1)
+  );
+}
+
+/**
+ * Generates all fixed-team matches (full round-robin schedule) for a fixed
+ * partner tournament. Existing completed matches are preserved; pending
+ * matches are regenerated so every remaining team pair is covered. Matches are
+ * grouped into rounds honouring the total court count.
+ */
+export function generateFixedMatches(
+  teams: FixedTeam[],
+  existingMatches: Match[],
+  tournamentId: string,
+  totalCourts: number
+): Match[] {
+  const completedMatches = existingMatches.filter(m => m.status === 'completed');
+  const playableTeams = teams.filter(t => t.playerIds.length === 2);
+
+  if (playableTeams.length < 2) {
+    return completedMatches;
+  }
+
+  const targetPairCount = (playableTeams.length * (playableTeams.length - 1)) / 2;
+
+  const playedPairs = new Set<string>();
+  completedMatches.forEach(m => {
+    const t1 = findTeamByPlayers(teams, m.team1[0], m.team1[1]);
+    const t2 = findTeamByPlayers(teams, m.team2[0], m.team2[1]);
+    if (t1 && t2) playedPairs.add(teamPairKey(t1.id, t2.id));
+  });
+
+  const currentMatches = [...completedMatches];
+  const startRound =
+    completedMatches.length > 0
+      ? Math.max(...completedMatches.map(m => m.round)) + 1
+      : 1;
+
+  const maxRounds = startRound + Math.max(50, playableTeams.length * 4);
+
+  for (let r = startRound; r <= maxRounds; r++) {
+    if (playedPairs.size >= targetPairCount) break;
+
+    const roundMatches: Match[] = [];
+
+    for (let court = 0; court < totalCourts; court++) {
+      if (playedPairs.size >= targetPairCount) break;
+
+      // Pick the pair of teams that has faced off the fewest times.
+      let best: [FixedTeam, FixedTeam] | null = null;
+      for (let i = 0; i < playableTeams.length; i++) {
+        for (let j = i + 1; j < playableTeams.length; j++) {
+          const a = playableTeams[i];
+          const b = playableTeams[j];
+          if (a.id === b.id) continue;
+          if (!playedPairs.has(teamPairKey(a.id, b.id))) {
+            best = [a, b];
+            break;
+          }
+        }
+        if (best) break;
+      }
+
+      if (!best) {
+        // All pairs already scheduled — stop.
+        break;
+      }
+      const [a, b] = best;
+      roundMatches.push({
+        id: uuidv4(),
+        tournament_id: tournamentId,
+        round: r,
+        team1: [...a.playerIds] as [string, string],
+        team2: [...b.playerIds] as [string, string],
+        score1: null,
+        score2: null,
+        status: 'pending',
+      });
+
+      playedPairs.add(teamPairKey(a.id, b.id));
+    }
+
+    if (roundMatches.length === 0) break;
+    currentMatches.push(...roundMatches);
+  }
+
+  return currentMatches;
+}
+
+/**
+ * Generates a single pending match for a fixed partner tournament, preferring
+ * a team pair that has not played yet (ties broken randomly).
+ */
+export function generateSingleFixedMatch(
+  teams: FixedTeam[],
+  existingMatches: Match[],
+  tournamentId: string
+): Match | null {
+  const playableTeams = teams.filter(t => t.playerIds.length === 2);
+  if (playableTeams.length < 2) return null;
+
+  const completedMatches = existingMatches.filter(m => m.status === 'completed');
+
+  const playedPairs = new Set<string>();
+  existingMatches.forEach(m => {
+    const t1 = findTeamByPlayers(teams, m.team1[0], m.team1[1]);
+    const t2 = findTeamByPlayers(teams, m.team2[0], m.team2[1]);
+    if (t1 && t2) playedPairs.add(teamPairKey(t1.id, t2.id));
+  });
+
+  let candidates: [FixedTeam, FixedTeam][] = [];
+  for (let i = 0; i < playableTeams.length; i++) {
+    for (let j = i + 1; j < playableTeams.length; j++) {
+      const a = playableTeams[i];
+      const b = playableTeams[j];
+      if (!playedPairs.has(teamPairKey(a.id, b.id))) {
+        candidates.push([a, b]);
+      }
+    }
+  }
+
+  // All pairs already played → still allow generating extra matches.
+  if (candidates.length === 0) {
+    candidates.push([playableTeams[0], playableTeams[1]]);
+  }
+
+  const shuffledCandidates = shuffle(candidates);
+  const pick = shuffledCandidates[0];
+
+  const roundNum =
+    completedMatches.length > 0
+      ? Math.max(...completedMatches.map(m => m.round)) + 1
+      : 1;
+
+  return {
+    id: uuidv4(),
+    tournament_id: tournamentId,
+    round: roundNum,
+    team1: [...pick[0].playerIds] as [string, string],
+    team2: [...pick[1].playerIds] as [string, string],
+    score1: null,
+    score2: null,
+    status: 'pending',
+  };
 }

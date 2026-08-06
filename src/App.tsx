@@ -3,6 +3,7 @@ import { Routes, Route, useParams, useNavigate, Navigate } from 'react-router-do
 import { useTournamentStore } from './store/tournamentStore';
 import { Dashboard } from './components/Dashboard';
 import { PlayerManagement } from './components/PlayerManagement';
+import { TeamsSetup } from './components/TeamsSetup';
 import { MatchList } from './components/MatchList';
 import { Leaderboard } from './components/Leaderboard';
 import { HomeScreen } from './components/HomeScreen';
@@ -88,6 +89,7 @@ function TournamentView() {
         <div className="flex flex-col gap-6 fade-in fade-in-delay-1">
           <Dashboard />
           <PlayerManagement />
+          {activeTournament.partnerMode === 'fixed' && activeTournament.status === 'setup' && <TeamsSetup />}
         </div>
 
         {/* Main Content / Right Column */}

@@ -8,7 +8,8 @@ export function HomeScreen() {
   const [newTournamentName, setNewTournamentName] = useState('');
   const [totalCourts, setTotalCourts] = useState(1);
   const [format, setFormat] = useState<'americano' | 'mexicano'>('americano');
-  const [pointsMode, setPointsMode] = useState<'total21' | 'free'>('total21');
+  const [pointsMode, setPointsMode] = useState<'total21' | 'default'>('total21');
+  const [partnerMode, setPartnerMode] = useState<'fixed' | 'rotating'>('rotating');
   const { tournaments, createTournament, deleteTournament, loadMoreTournaments, hasMoreTournaments, isLoadingMore } = useTournamentStore();
 
   useEffect(() => {
@@ -18,11 +19,12 @@ export function HomeScreen() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newTournamentName.trim()) {
-      const id = await createTournament(newTournamentName.trim(), totalCourts, format, pointsMode);
+      const id = await createTournament(newTournamentName.trim(), totalCourts, format, pointsMode, partnerMode);
       setNewTournamentName('');
       setTotalCourts(1);
       setFormat('americano');
       setPointsMode('total21');
+      setPartnerMode('rotating');
       navigate(`/tournament/${id}`);
     }
   };
@@ -98,10 +100,10 @@ export function HomeScreen() {
                 id="points-select"
                 className="input"
                 value={pointsMode}
-                onChange={(e) => setPointsMode(e.target.value as 'total21' | 'free')}
+                onChange={(e) => setPointsMode(e.target.value as 'total21' | 'default')}
               >
                 <option value="total21">Total 21</option>
-                <option value="free">Free</option>
+                <option value="default">Default (Tennis)</option>
               </select>
             </div>
 
@@ -121,6 +123,24 @@ export function HomeScreen() {
                 value={totalCourts}
                 onChange={(e) => setTotalCourts(Math.max(1, parseInt(e.target.value) || 1))}
               />
+            </div>
+
+            <div>
+              <label
+                htmlFor="partner-select"
+                style={{ display: 'block', fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--space-1)' }}
+              >
+                Partner
+              </label>
+              <select
+                id="partner-select"
+                className="input"
+                value={partnerMode}
+                onChange={(e) => setPartnerMode(e.target.value as 'fixed' | 'rotating')}
+              >
+                <option value="rotating">Rotating</option>
+                <option value="fixed">Fixed</option>
+              </select>
             </div>
           </div>
 
@@ -187,7 +207,10 @@ export function HomeScreen() {
                           {t.format || 'americano'}
                         </span>
                         <span className="badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-subtle)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                          {t.pointsMode === 'free' ? 'Free pts' : '21 pts'}
+                          {t.pointsMode === 'default' ? 'Default pts' : '21 pts'}
+                        </span>
+                        <span className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)', border: '1px solid var(--border-light)', textTransform: 'capitalize' }}>
+                          {(t.partnerMode || 'rotating') === 'fixed' ? 'Fixed' : 'Rotating'}
                         </span>
                         <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-muted)' }}>
                           {t.players.filter(p => p.active).length} players

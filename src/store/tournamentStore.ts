@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import type { Player, Tournament, Match, TournamentStoreState } from '../lib/types';
-import { generateRounds, generateSingleMatch as generateSingleMatchUtil } from '../lib/matchmaking';
+import type { Player, Tournament, Match, TournamentStoreState, FixedTeam } from '../lib/types';
+import { generateRounds, generateSingleMatch as generateSingleMatchUtil, generateFixedMatches, generateSingleFixedMatch } from '../lib/matchmaking';
 import { supabase } from '../utils/supabase';
 
 interface TournamentActions {
@@ -9,10 +9,17 @@ interface TournamentActions {
   fetchTournaments: (opts?: { limit?: number }) => Promise<void>;
   loadMoreTournaments: () => Promise<void>;
   fetchTournamentById: (id: string) => Promise<void>;
-  createTournament: (name: string, totalCourts: number, format: 'americano' | 'mexicano', pointsMode: 'total21' | 'free') => Promise<string>;
+  createTournament: (name: string, totalCourts: number, format: 'americano' | 'mexicano', pointsMode: 'total21' | 'default', partnerMode?: 'fixed' | 'rotating') => Promise<string>;
   deleteTournament: (id: string) => Promise<void>;
   setActiveTournament: (id: string | null) => void;
   updateTotalCourts: (courts: number) => Promise<void>;
+
+  // Fixed partner (team) actions
+  addTeam: () => Promise<void>;
+  renameTeam: (teamId: string, name: string) => Promise<void>;
+  setTeamPlayers: (teamId: string, playerIds: string[]) => Promise<void>;
+  removeTeam: (teamId: string) => Promise<void>;
+  swapMatchTeam: (matchId: string, oldTeamPlayerIds: string[], newTeamPlayerIds: string[]) => Promise<void>;
 
   // Active tournament actions
   addPlayer: (name: string) => Promise<void>;
@@ -41,6 +48,34 @@ interface TournamentRow {
   status: string;
   format?: string;
   points_mode?: string;
+  partner_mode?: 'fixed' | 'rotating';
+  teams?: FixedTeam[];
+}
+
+// Helper to parse teams column safely (it may come back as JSON or be absent).
+function parseTeams(value: FixedTeam[] | null | undefined): FixedTeam[] {
+  if (Array.isArray(value)) return value;
+  return [];
+}
+
+/**
+ * Regenerates pending matches for a tournament, dispatching on partner mode:
+ *  - rotating: current algorithm (generateRounds)
+ *  - fixed:    team-based round-robin (generateFixedMatches)
+ */
+function regenerateForTournament(t: Tournament, matches: Match[]): Match[] {
+  if (t.partnerMode === 'fixed') {
+    return generateFixedMatches(t.teams, matches, t.id, t.totalCourts);
+  }
+  return generateRounds(t.players, matches, t.id, t.totalCourts, t.format);
+}
+
+/** Generates a single pending match, dispatching on partner mode. */
+function generateSingleForTournament(t: Tournament): Match | null {
+  if (t.partnerMode === 'fixed') {
+    return generateSingleFixedMatch(t.teams, t.matches, t.id);
+  }
+  return generateSingleMatchUtil(t.players, t.matches, t.id, t.format);
 }
 interface PlayerRow {
   id: string;
@@ -89,7 +124,9 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
               totalCourts: row.total_courts || 1,
               status: row.status as 'setup' | 'active' | 'completed',
               format: (row.format as 'americano' | 'mexicano') || 'americano',
-              pointsMode: (row.points_mode as 'total21' | 'free') || 'total21',
+              pointsMode: (row.points_mode as 'total21' | 'default') || 'total21',
+              partnerMode: (row.partner_mode as 'fixed' | 'rotating') || 'rotating',
+              teams: parseTeams(row.teams),
             };
             return {
               tournaments: exists
@@ -238,7 +275,9 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
             players: playersForT,
             matches: [],
             format: (t.format as 'americano' | 'mexicano') || 'americano',
-            pointsMode: (t.points_mode as 'total21' | 'free') || 'total21'
+            pointsMode: (t.points_mode as 'total21' | 'default') || 'total21',
+            partnerMode: (t.partner_mode as 'fixed' | 'rotating') || 'rotating',
+            teams: parseTeams(t.teams)
           };
         });
 
@@ -313,7 +352,9 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
             players: playersForT,
             matches: [],
             format: (t.format as 'americano' | 'mexicano') || 'americano',
-            pointsMode: (t.points_mode as 'total21' | 'free') || 'total21'
+            pointsMode: (t.points_mode as 'total21' | 'default') || 'total21',
+            partnerMode: (t.partner_mode as 'fixed' | 'rotating') || 'rotating',
+            teams: parseTeams(t.teams)
           };
         });
 
@@ -379,7 +420,9 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
           players: playersForT,
           matches: dbMatches,
           format: (t.format as 'americano' | 'mexicano') || 'americano',
-          pointsMode: (t.points_mode as 'total21' | 'free') || 'total21'
+          pointsMode: (t.points_mode as 'total21' | 'default') || 'total21',
+          partnerMode: (t.partner_mode as 'fixed' | 'rotating') || 'rotating',
+          teams: parseTeams(t.teams)
         };
 
         set((s) => {
@@ -405,9 +448,17 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     await get().fetchTournaments();
   },
 
-  createTournament: async (name, totalCourts, format, pointsMode) => {
+  createTournament: async (name, totalCourts, format, pointsMode, partnerMode = 'rotating') => {
     const id = uuidv4();
     const createdAt = Date.now();
+
+    // For fixed partner, seed a couple of default teams (Team A, Team B).
+    const teams: FixedTeam[] = partnerMode === 'fixed'
+      ? [
+          { id: uuidv4(), name: 'Team A', playerIds: [] },
+          { id: uuidv4(), name: 'Team B', playerIds: [] },
+        ]
+      : [];
 
     // Optimistic UI update
     const newTournament: Tournament = {
@@ -419,7 +470,9 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       matches: [],
       status: 'setup',
       format,
-      pointsMode
+      pointsMode,
+      partnerMode,
+      teams
     };
 
     set((state) => ({
@@ -435,7 +488,9 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       total_courts: totalCourts,
       status: 'setup',
       format,
-      points_mode: pointsMode
+      points_mode: pointsMode,
+      partner_mode: partnerMode,
+      teams
     });
 
     return id;
@@ -455,6 +510,150 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
 
     // Sync
     await supabase.from('tournaments').update({ total_courts: courts }).eq('id', activeId);
+  },
+
+  addTeam: async () => {
+    const state = get();
+    const activeId = state.activeTournamentId;
+    if (!activeId) return;
+
+    const t = state.tournaments.find(x => x.id === activeId);
+    if (!t || t.status !== 'setup' || t.partnerMode !== 'fixed') return;
+
+    const existingNames = t.teams.map(tm => tm.name);
+    let index = t.teams.length;
+    let name = `Team ${String.fromCharCode(65 + index)}`;
+    while (existingNames.includes(name)) {
+      index++;
+      name = `Team ${String.fromCharCode(65 + index)}`;
+    }
+
+    const newTeam: FixedTeam = { id: uuidv4(), name, playerIds: [] };
+    const newTeams = [...t.teams, newTeam];
+
+    // Optimistic
+    set((s) => ({
+      tournaments: s.tournaments.map(curr =>
+        curr.id === activeId ? { ...curr, teams: newTeams } : curr
+      )
+    }));
+
+    // Sync
+    await supabase.from('tournaments').update({ teams: newTeams }).eq('id', activeId);
+  },
+
+  renameTeam: async (teamId, name) => {
+    const state = get();
+    const activeId = state.activeTournamentId;
+    if (!activeId) return;
+
+    const t = state.tournaments.find(x => x.id === activeId);
+    if (!t) return;
+
+    const newTeams = t.teams.map(tm =>
+      tm.id === teamId ? { ...tm, name } : tm
+    );
+
+    // Optimistic
+    set((s) => ({
+      tournaments: s.tournaments.map(curr =>
+        curr.id === activeId ? { ...curr, teams: newTeams } : curr
+      )
+    }));
+
+    // Sync
+    await supabase.from('tournaments').update({ teams: newTeams }).eq('id', activeId);
+  },
+
+  setTeamPlayers: async (teamId, playerIds) => {
+    const state = get();
+    const activeId = state.activeTournamentId;
+    if (!activeId) return;
+
+    const t = state.tournaments.find(x => x.id === activeId);
+    if (!t) return;
+
+    // A player can belong to only one team. Remove the player from any other.
+    const newTeams = t.teams.map(tm =>
+      tm.id === teamId
+        ? { ...tm, playerIds }
+        : { ...tm, playerIds: tm.playerIds.filter(p => !playerIds.includes(p)) }
+    );
+
+    // Optimistic
+    set((s) => ({
+      tournaments: s.tournaments.map(curr =>
+        curr.id === activeId ? { ...curr, teams: newTeams } : curr
+      )
+    }));
+
+    // Sync
+    await supabase.from('tournaments').update({ teams: newTeams }).eq('id', activeId);
+  },
+
+  removeTeam: async (teamId) => {
+    const state = get();
+    const activeId = state.activeTournamentId;
+    if (!activeId) return;
+
+    const t = state.tournaments.find(x => x.id === activeId);
+    if (!t || t.status !== 'setup') return;
+
+    const newTeams = t.teams.filter(tm => tm.id !== teamId);
+
+    // Optimistic
+    set((s) => ({
+      tournaments: s.tournaments.map(curr =>
+        curr.id === activeId ? { ...curr, teams: newTeams } : curr
+      )
+    }));
+
+    // Sync
+    await supabase.from('tournaments').update({ teams: newTeams }).eq('id', activeId);
+  },
+
+  swapMatchTeam: async (matchId, oldTeamPlayerIds, newTeamPlayerIds) => {
+    const state = get();
+    const activeId = state.activeTournamentId;
+    if (!activeId) return;
+
+    const t = state.tournaments.find(x => x.id === activeId);
+    if (!t || t.partnerMode !== 'fixed') return;
+
+    const matchesToUpdate: Match[] = [];
+
+    const newMatches = t.matches.map(m => {
+      if (m.id !== matchId) return m;
+      if (m.status !== 'pending') return m;
+
+      const match = { ...m, team1: [...m.team1], team2: [...m.team2] };
+
+      // Identify which side currently holds the team being replaced.
+      const inTeam1 = oldTeamPlayerIds.every(p => match.team1.includes(p));
+      const inTeam2 = oldTeamPlayerIds.every(p => match.team2.includes(p));
+
+      if (inTeam1) match.team1 = [...newTeamPlayerIds];
+      else if (inTeam2) match.team2 = [...newTeamPlayerIds];
+      else return m;
+
+      matchesToUpdate.push(match);
+      return match;
+    });
+
+    if (matchesToUpdate.length === 0) return;
+
+    // Optimistic
+    set((s) => ({
+      tournaments: s.tournaments.map(curr => {
+        if (curr.id !== activeId) return curr;
+        return { ...curr, matches: newMatches };
+      })
+    }));
+
+    // Sync
+    for (const m of matchesToUpdate) {
+      await supabase.from('matches').update({ team1: m.team1, team2: m.team2 }).eq('id', m.id);
+    }
   },
 
   deleteTournament: async (id) => {
@@ -505,7 +704,8 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
         tournaments: s.tournaments.map(curr => {
           if (curr.id !== activeId) return curr;
           if (curr.status === 'active') {
-            newMatches = generateRounds(newPlayers, curr.matches, activeId, curr.totalCourts, curr.format);
+            const updated = { ...curr, players: newPlayers };
+            newMatches = regenerateForTournament(updated, updated.matches);
             matchesToInsert = newMatches.filter(m => !curr.matches.some(om => om.id === m.id));
           }
           return { ...curr, players: newPlayers, matches: newMatches };
@@ -540,6 +740,11 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     if (!t) return;
 
     const newPlayers = t.players.map(p => p.id === id ? { ...p, active: false } : p);
+    // Remove the player from any fixed team they were assigned to.
+    const strippedTeams = (t.teams || []).map(tm => ({
+      ...tm,
+      playerIds: tm.playerIds.filter(p => p !== id)
+    }));
     let newMatches = t.matches;
     let matchesToInsert: Match[] = [];
 
@@ -548,15 +753,20 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       tournaments: s.tournaments.map(curr => {
         if (curr.id !== activeId) return curr;
         if (curr.status === 'active') {
-          newMatches = generateRounds(newPlayers, curr.matches, activeId, curr.totalCourts, curr.format);
+          const updated = { ...curr, players: newPlayers, teams: strippedTeams };
+          newMatches = regenerateForTournament(updated, updated.matches);
           matchesToInsert = newMatches.filter(m => !curr.matches.some(om => om.id === m.id));
         }
-        return { ...curr, players: newPlayers, matches: newMatches };
+        return { ...curr, players: newPlayers, teams: strippedTeams, matches: newMatches };
       })
     }));
 
     // Sync Player
     await supabase.from('tournament_participants').update({ active: false }).eq('tournament_id', activeId).eq('player_id', id);
+    // Persist team changes
+    if (JSON.stringify(strippedTeams) !== JSON.stringify(t.teams)) {
+      await supabase.from('tournaments').update({ teams: strippedTeams }).eq('id', activeId);
+    }
 
     // Sync Matches if regenerated
     if (matchesToInsert.length > 0) {
@@ -575,6 +785,11 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
 
     // Filter out player completely from tournament's players list
     const newPlayers = t.players.filter(p => p.id !== id);
+    // Remove the player from any fixed team they were assigned to.
+    const strippedTeams = (t.teams || []).map(tm => ({
+      ...tm,
+      playerIds: tm.playerIds.filter(p => p !== id)
+    }));
     let newMatches = t.matches;
     let matchesToInsert: Match[] = [];
 
@@ -583,15 +798,20 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
       tournaments: s.tournaments.map(curr => {
         if (curr.id !== activeId) return curr;
         if (curr.status === 'active') {
-          newMatches = generateRounds(newPlayers, curr.matches, activeId, curr.totalCourts, curr.format);
+          const updated = { ...curr, players: newPlayers, teams: strippedTeams };
+          newMatches = regenerateForTournament(updated, updated.matches);
           matchesToInsert = newMatches.filter(m => !curr.matches.some(om => om.id === m.id));
         }
-        return { ...curr, players: newPlayers, matches: newMatches };
+        return { ...curr, players: newPlayers, teams: strippedTeams, matches: newMatches };
       })
     }));
 
     // Delete completely from tournament_participants
     await supabase.from('tournament_participants').delete().eq('tournament_id', activeId).eq('player_id', id);
+    // Persist team changes
+    if (JSON.stringify(strippedTeams) !== JSON.stringify(t.teams)) {
+      await supabase.from('tournaments').update({ teams: strippedTeams }).eq('id', activeId);
+    }
 
     // Sync Matches if regenerated
     if (matchesToInsert.length > 0) {
@@ -607,9 +827,11 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
 
     const t = state.tournaments.find(x => x.id === activeId);
     if (!t) return;
-    if (t.players.filter(p => p.active).length < 4) return;
+    const hasEnoughPlayers = t.players.filter(p => p.active).length >= 4;
+    const hasEnoughTeams = t.teams.filter(tm => tm.playerIds.length === 2).length >= 2;
+    if (t.partnerMode === 'fixed' ? !hasEnoughTeams : !hasEnoughPlayers) return;
 
-    const newMatches = generateRounds(t.players, t.matches, activeId, t.totalCourts, t.format);
+    const newMatches = regenerateForTournament(t, t.matches);
     const matchesToInsert = newMatches.filter(m => !t.matches.some(om => om.id === m.id));
 
     // Optimistic
@@ -635,7 +857,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     const t = state.tournaments.find(x => x.id === activeId);
     if (!t || t.status !== 'active') return;
 
-    const newMatches = generateRounds(t.players, t.matches, activeId, t.totalCourts, t.format);
+    const newMatches = regenerateForTournament(t, t.matches);
     const matchesToInsert = newMatches.filter(m => !t.matches.some(om => om.id === m.id));
 
     // Optimistic
@@ -661,7 +883,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     if (!t || t.status !== 'active') return;
 
     const completedMatches = t.matches.filter(m => m.status === 'completed');
-    const newMatches = generateRounds(t.players, completedMatches, activeId, t.totalCourts, t.format);
+    const newMatches = regenerateForTournament({ ...t, matches: completedMatches }, completedMatches);
     const matchesToInsert = newMatches.filter(m => !completedMatches.some(om => om.id === m.id));
 
     // Optimistic
@@ -692,7 +914,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     if (hasPending) return;
 
     // Always generate a new match (works even after all unique pairs are covered)
-    const newMatch = generateSingleMatchUtil(t.players, t.matches, activeId, t.format);
+    const newMatch = generateSingleForTournament(t);
     if (!newMatch) return;
 
     // Optimistic
@@ -816,7 +1038,8 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     set((s) => ({
       tournaments: s.tournaments.map(curr => {
         if (curr.id !== activeId) return curr;
-        return { ...curr, players: [], matches: [], status: 'setup' as const };
+        const resetTeams = curr.teams.map(tm => ({ ...tm, playerIds: [] }));
+        return { ...curr, players: [], matches: [], status: 'setup' as const, teams: resetTeams };
       })
     }));
 

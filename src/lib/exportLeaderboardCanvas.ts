@@ -1,8 +1,14 @@
-import type { LeaderboardEntry } from './leaderboard';
+import type { LeaderboardEntry, TeamLeaderboardEntry } from './leaderboard';
 import type { Tournament } from './types';
 
-export function exportLeaderboardPNG(tournament: Tournament, leaderboard: LeaderboardEntry[]): void {
-  if (leaderboard.length === 0) return;
+export function exportLeaderboardPNG(
+  tournament: Tournament,
+  leaderboard: LeaderboardEntry[] | undefined,
+  teamLeaderboard?: TeamLeaderboardEntry[]
+): void {
+  const isTeam = Boolean(teamLeaderboard && teamLeaderboard.length > 0);
+  const rows = (isTeam ? teamLeaderboard! : leaderboard) as (LeaderboardEntry | TeamLeaderboardEntry)[];
+  if (rows.length === 0) return;
 
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
@@ -83,7 +89,7 @@ export function exportLeaderboardPNG(tournament: Tournament, leaderboard: Leader
   const availableHeightForRows = cardHeight - 250 - footerHeight - tableHeaderHeight - tableHeaderGap;
 
   // Dynamically calculate row height to fit all players vertically in 9:16 portrait mode
-  const totalRows = leaderboard.length;
+  const totalRows = rows.length;
   const maxRowHeight = 85;
   const minRowHeight = 42;
   const computedRowHeight = Math.max(
@@ -113,7 +119,7 @@ export function exportLeaderboardPNG(tournament: Tournament, leaderboard: Leader
   ctx.textAlign = 'center';
   ctx.fillText('#', colX.rank, tableTop + 41);
   ctx.textAlign = 'left';
-  ctx.fillText('PLAYER', colX.name, tableTop + 41);
+  ctx.fillText(isTeam ? 'TEAM' : 'PLAYER', colX.name, tableTop + 41);
   ctx.textAlign = 'center';
   ctx.fillText('W', colX.wins, tableTop + 41);
   ctx.fillText('L', colX.losses, tableTop + 41);
@@ -126,7 +132,9 @@ export function exportLeaderboardPNG(tournament: Tournament, leaderboard: Leader
   const fontSizePlayer = isCompact ? 'bold 24px sans-serif' : 'bold 32px sans-serif';
   const fontSizeStat = isCompact ? 'bold 20px sans-serif' : 'bold 26px sans-serif';
 
-  leaderboard.forEach((entry, idx) => {
+  rows.forEach((rawEntry, idx) => {
+    const entry = rawEntry as LeaderboardEntry;
+    const teamEntry = 'team' in rawEntry ? (rawEntry as TeamLeaderboardEntry) : undefined;
     const rowY = tableTop + tableHeaderHeight + tableHeaderGap + (idx * computedRowHeight);
     const isTop3 = idx < 3;
 
@@ -171,21 +179,40 @@ export function exportLeaderboardPNG(tournament: Tournament, leaderboard: Leader
       ctx.fillText(`${idx + 1}`, colX.rank, textCenterY);
     }
 
-    // Player Name
+    // Player / Team Name
     ctx.textAlign = 'left';
     ctx.font = fontSizePlayer;
     ctx.fillStyle = isTop3 ? '#ffffff' : '#e2e8f0';
 
-    // Truncate player name if too long for portrait column width
-    let displayName = entry.player.name;
     const maxNameWidth = colX.wins - colX.name - 20;
-    if (ctx.measureText(displayName).width > maxNameWidth) {
-      while (displayName.length > 3 && ctx.measureText(displayName + '...').width > maxNameWidth) {
-        displayName = displayName.slice(0, -1);
+    const truncate = (label: string): string => {
+      if (ctx.measureText(label).width <= maxNameWidth) return label;
+      let shortened = label;
+      while (shortened.length > 3 && ctx.measureText(shortened + '...').width > maxNameWidth) {
+        shortened = shortened.slice(0, -1);
       }
-      displayName += '...';
+      return shortened + '...';
+    };
+
+    if (teamEntry) {
+      // Team name on the main line; members as a smaller secondary line below (when there is room).
+      const nameLines = teamEntry.team.playerIds.length === 2
+        ? teamEntry.team.playerIds
+            .map(pid => teamEntry.members.find(m => m.id === pid)?.name)
+            .filter(Boolean)
+        : [];
+
+      ctx.fillText(truncate(teamEntry.team.name), colX.name, textCenterY);
+
+      if (nameLines.length > 0 && !isCompact) {
+        ctx.font = '500 16px sans-serif';
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.9)';
+        const membersLabel = nameLines.join(' & ');
+        ctx.fillText(truncate(membersLabel), colX.name, textCenterY + 22);
+      }
+    } else {
+      ctx.fillText(truncate(entry.player.name), colX.name, textCenterY);
     }
-    ctx.fillText(displayName, colX.name, textCenterY);
 
     // Wins
     ctx.textAlign = 'center';

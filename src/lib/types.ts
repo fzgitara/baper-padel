@@ -29,7 +29,16 @@ export interface Tournament {
   matches: Match[];
   status: 'setup' | 'active' | 'completed';
   format: 'americano' | 'mexicano';
-  pointsMode: 'total21' | 'free';
+  pointsMode: 'total21' | 'default';
+  partnerMode: 'fixed' | 'rotating';
+  teams: FixedTeam[];
+}
+
+export type PartnerMode = 'fixed' | 'rotating';
+export interface FixedTeam {
+  id: string;
+  name: string;
+  playerIds: string[]; // exactly 2 when fully configured
 }
 
 export interface TournamentStoreState {

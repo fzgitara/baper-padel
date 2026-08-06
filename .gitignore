@@ -25,3 +25,4 @@ schema.sql
 *.njsproj
 *.sln
 *.sw?
+*.sql
