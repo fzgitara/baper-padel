@@ -53,7 +53,9 @@ export function Scoreboard() {
       useTournamentStore.getState().setActiveTournament(id);
       useTournamentStore.getState().fetchTournamentById(id).finally(() => setLoading(false));
     }
+    const unsubscribe = useTournamentStore.getState().subscribeToRealtime();
     return () => {
+      unsubscribe();
       useTournamentStore.getState().setActiveTournament(null);
     };
   }, [id]);
