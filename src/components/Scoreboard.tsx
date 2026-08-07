@@ -38,6 +38,7 @@ export function Scoreboard() {
     tournaments,
     activeTournamentId,
     updateScore,
+    updateLiveScore,
     randomizePendingMatches,
     swapMatchPlayer,
     swapMatchTeam,
@@ -46,7 +47,7 @@ export function Scoreboard() {
   const activeTournament = tournaments.find(t => t.id === (id || activeTournamentId));
 
   const [loading, setLoading] = useState(!!id);
-  const [score, setScore] = useState<LiveScore | null>(null);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -121,22 +122,47 @@ export function Scoreboard() {
   const pendingMatches = matches.filter(m => m.status === 'pending');
   const completedMatches = matches.filter(m => m.status === 'completed');
 
+  // The currently selected match. Falls back to the first pending match when
+  // none is explicitly selected (or after finishing one).
   const selectedMatch: Match | null =
-    score ? matches.find(m => m.id === score.matchId) || null : pendingMatches[0] || null;
+    matches.find(m => m.id === selectedMatchId) || pendingMatches[0] || null;
+
+  // Derive the displayed live score directly from the selected match's
+  // persisted live fields (the single source of truth, kept in sync via
+  // realtime by updateLiveScore).
+  const liveScore: LiveScore | null =
+    selectedMatch && selectedMatch.status === 'pending'
+      ? {
+          matchId: selectedMatch.id,
+          sets1: selectedMatch.live_sets1 ?? 0,
+          sets2: selectedMatch.live_sets2 ?? 0,
+          game1: selectedMatch.live_game1 ?? 0,
+          game2: selectedMatch.live_game2 ?? 0,
+        }
+      : null;
 
   const isTennis = pointsMode === 'default';
 
   const handleChoose = (m: Match) => {
     if (m.status !== 'pending') return;
-    setScore({ matchId: m.id, sets1: 0, sets2: 0, game1: 0, game2: 0 });
+    setSelectedMatchId(m.id);
+  };
+
+  // Persist a live score change: optimistic UI + realtime sync to DB.
+  const persistLiveScore = (live: LiveScore) => {
+    updateLiveScore(live.matchId, {
+      sets1: live.sets1,
+      sets2: live.sets2,
+      game1: live.game1,
+      game2: live.game2,
+    });
   };
 
   const handleFinish = async () => {
-    if (!selectedMatch) return;
-    const s = score || { matchId: selectedMatch.id, sets1: 0, sets2: 0, game1: 0, game2: 0 };
+    if (!selectedMatch || !liveScore) return;
     // Persist the set-point totals as the match result.
-    await updateScore(selectedMatch.id, s.sets1, s.sets2);
-    setScore(null);
+    await updateScore(selectedMatch.id, liveScore.sets1, liveScore.sets2);
+    setSelectedMatchId(null);
   };
 
   const renderTeamPlayers = (team: string[], align: 'left' | 'right' | 'center') => {
@@ -229,7 +255,7 @@ export function Scoreboard() {
             {pendingMatches.map(m => (
               <button
                 key={m.id}
-                className={`btn ${score?.matchId === m.id ? 'btn-primary' : 'btn-outline'}`}
+                className={`btn ${selectedMatchId === m.id ? 'btn-primary' : 'btn-outline'}`}
                 style={{ fontSize: 'var(--font-size-xs)', padding: '6px 12px' }}
                 onClick={() => handleChoose(m)}
                 disabled={status !== 'active'}
@@ -242,12 +268,12 @@ export function Scoreboard() {
       )}
 
       {/* ── Active Scoreboard ── */}
-      {selectedMatch && status === 'active' ? (
+      {liveScore && status === 'active' ? (
         isTennis ? (
           <TennisScoreboard
             match={selectedMatch}
-            score={score}
-            setScore={setScore}
+            score={liveScore}
+            setScore={persistLiveScore}
             renderTeamPlayers={renderTeamPlayers}
             onFinish={handleFinish}
             players={activePlayers}
@@ -261,8 +287,8 @@ export function Scoreboard() {
         ) : (
           <Court21Scoreboard
             match={selectedMatch}
-            score={score}
-            setScore={setScore}
+            score={liveScore}
+            setScore={persistLiveScore}
             renderTeamPlayers={renderTeamPlayers}
             onFinish={handleFinish}
             players={activePlayers}

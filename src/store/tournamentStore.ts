@@ -27,6 +27,7 @@ interface TournamentActions {
   deletePlayerCompletely: (id: string) => Promise<void>;
   startTournament: () => Promise<void>;
   updateScore: (matchId: string, score1: number, score2: number) => Promise<void>;
+  updateLiveScore: (matchId: string, live: { sets1: number; sets2: number; game1: number; game2: number }) => Promise<void>;
   generateNextRound: () => Promise<void>;
   randomizePendingMatches: () => Promise<void>;
   generateSingleMatch: () => Promise<void>;
@@ -940,7 +941,7 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
         if (curr.id !== activeId) return curr;
         const newMatches = curr.matches.map(m =>
           m.id === matchId
-            ? { ...m, score1, score2, status: 'completed' as const }
+            ? { ...m, score1, score2, status: 'completed' as const, live_sets1: null, live_sets2: null, live_game1: null, live_game2: null }
             : m
         );
         return { ...curr, matches: newMatches };
@@ -951,7 +952,40 @@ export const useTournamentStore = create<TournamentStoreState & TournamentAction
     await supabase.from('matches').update({
       score1,
       score2,
-      status: 'completed'
+      status: 'completed',
+      live_sets1: null,
+      live_sets2: null,
+      live_game1: null,
+      live_game2: null
+    }).eq('id', matchId);
+  },
+
+  updateLiveScore: async (matchId, live) => {
+    const state = get();
+    const activeId = state.activeTournamentId;
+    if (!activeId) return;
+
+    const { sets1, sets2, game1, game2 } = live;
+
+    // Optimistic
+    set((s) => ({
+      tournaments: s.tournaments.map(curr => {
+        if (curr.id !== activeId) return curr;
+        const newMatches = curr.matches.map(m =>
+          m.id === matchId
+            ? { ...m, live_sets1: sets1, live_sets2: sets2, live_game1: game1, live_game2: game2 }
+            : m
+        );
+        return { ...curr, matches: newMatches };
+      })
+    }));
+
+    // Sync
+    await supabase.from('matches').update({
+      live_sets1: sets1,
+      live_sets2: sets2,
+      live_game1: game1,
+      live_game2: game2
     }).eq('id', matchId);
   },
 

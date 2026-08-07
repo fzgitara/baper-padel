@@ -18,6 +18,12 @@ export interface Match {
   score1: number | null;
   score2: number | null;
   status: 'pending' | 'completed';
+  // Live (in-progress) scoring state, persisted for realtime sync.
+  // sets = set points (games won); game = current game raw points.
+  live_sets1?: number | null;
+  live_sets2?: number | null;
+  live_game1?: number | null;
+  live_game2?: number | null;
 }
 
 export interface Tournament {
