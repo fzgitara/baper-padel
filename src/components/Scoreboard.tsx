@@ -444,8 +444,9 @@ function TennisScoreboard({
   const s = score || { matchId: match.id, sets1: 0, sets2: 0, game1: 0, game2: 0 };
   const gameStatus = tennisGameStatus(s.game1, s.game2);
   const gameText = tennisGameStatusText(gameStatus);
-  // Default: match is complete when BOTH teams' set points total at least 4.
-  const matchComplete = s.sets1 + s.sets2 >= 4;
+  // The winner is decided by the user, so the match can be saved once at
+  // least one set point has been scored (prevents saving an empty 0–0).
+  const matchComplete = s.sets1 + s.sets2 >= 1;
 
   const addGamePoint = (side: 1 | 2) => {
     const res = applyTennisPoint(s.game1, s.game2, side);
@@ -478,7 +479,7 @@ function TennisScoreboard({
             Set Points
           </span>
           {matchComplete && (
-            <span className="badge badge-completed">Match complete</span>
+            <span className="badge badge-completed">Ready to save</span>
           )}
         </div>
       </div>
@@ -533,7 +534,7 @@ function TennisScoreboard({
           </div>
           <PointControls
             canDec={s.game1 > 0}
-            canInc={!matchComplete}
+            canInc
             onDec={() => undoGamePoint(1)}
             onInc={() => addGamePoint(1)}
           />
@@ -544,7 +545,7 @@ function TennisScoreboard({
           </div>
           <PointControls
             canDec={s.game2 > 0}
-            canInc={!matchComplete}
+            canInc
             onDec={() => undoGamePoint(2)}
             onInc={() => addGamePoint(2)}
           />
@@ -562,7 +563,7 @@ function TennisScoreboard({
         onSwapTeam={onSwapTeam}
       />
 
-      <FinishBar isReady={matchComplete} onFinish={onFinish} hint="Saveable once both teams' set points total 4 or more." />
+      <FinishBar isReady={matchComplete} onFinish={onFinish} hint="You decide the winner. Save the match result whenever it's finished." />
     </div>
   );
 }
