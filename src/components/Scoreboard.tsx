@@ -515,37 +515,43 @@ function TennisScoreboard({
       {/* ── BIG SET-POINT SCOREBOARD ── */}
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr auto 1fr',
+          display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          gap: 'var(--space-4)',
-          padding: 'var(--space-6)',
+          justifyContent: 'center',
+          gap: 'var(--space-3)',
+          padding: 'var(--space-6) var(--space-4)',
           background: 'rgba(0,0,0,0.35)',
           borderRadius: 'var(--radius-lg)',
           border: '1px solid rgba(255,255,255,0.08)',
-          marginBottom: 'var(--space-6)',
+          marginBottom: 'var(--space-6)'
         }}
       >
-        {renderTeamPlayers(match.team1, 'center')}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', fontWeight: 800, fontSize: 'var(--font-size-4xl)', letterSpacing: '4px' }}>
-          <span style={{ color: 'var(--accent-primary)' }}>{s.sets1}</span>
-          <span style={{ color: 'var(--border-light)', fontWeight: 300, fontSize: 'var(--font-size-2xl)' }}>–</span>
-          <span style={{ color: 'var(--accent-primary)' }}>{s.sets2}</span>
+        {/* Team names above the score */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-4)', width: '100%' }}>
+          {renderTeamPlayers(match.team1, 'left')}
+          <span style={{ alignSelf: 'center', fontSize: 'var(--font-size-3xl)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-subtle)' }}>
+            Set Points
+          </span>
+          {renderTeamPlayers(match.team2, 'right')}
         </div>
 
-        {renderTeamPlayers(match.team2, 'center')}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-4)', fontWeight: 800, fontSize: 'clamp(6rem, 32vw, 20rem)', letterSpacing: '6px', lineHeight: 1 }}>
+          <span style={{ color: 'var(--accent-primary)', textShadow: '0 0 40px var(--accent-primary-glow)' }}>{s.sets1}</span>
+          <span style={{ color: 'var(--border-light)', fontWeight: 300, fontSize: '0.5em' }}>–</span>
+          <span style={{ color: 'var(--accent-primary)', textShadow: '0 0 40px var(--accent-primary-glow)' }}>{s.sets2}</span>
+        </div>
       </div>
 
       {/* ── Current game in tennis notation ── */}
       <div style={{ textAlign: 'center', marginBottom: 'var(--space-3)' }}>
-        <div style={{ fontSize: 'var(--font-size-xs)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
+        <div style={{ fontSize: 'var(--font-size-3xl)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
           In This Game
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', fontSize: 'var(--font-size-3xl)', fontWeight: 700, letterSpacing: '2px', marginTop: 'var(--space-2)' }}>
-          <span style={{ color: 'var(--accent-primary)' }}>{tennisSideLabel(s.game1, 1, gameStatus)}</span>
-          <span style={{ color: 'var(--border-light)', fontWeight: 400 }}>–</span>
-          <span style={{ color: 'var(--accent-primary)' }}>{tennisSideLabel(s.game2, 2, gameStatus)}</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', fontSize: 'clamp(6rem, 32vw, 20rem)', fontWeight: 700, letterSpacing: '2px', marginTop: 'var(--space-2)' }}>
+          <span style={{ color: 'var(--accent-secondary)' }}>{tennisSideLabel(s.game1, 1, gameStatus)}</span>
+          <span style={{ color: 'var(--border-light)', fontWeight: 300, fontSize: '0.5em' }}>–</span>
+          <span style={{ color: 'var(--accent-secondary)' }}>{tennisSideLabel(s.game2, 2, gameStatus)}</span>
         </div>
         {gameText && (
           <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--accent-secondary)', fontWeight: 600, marginTop: 'var(--space-1)' }}>
@@ -648,25 +654,31 @@ function Court21Scoreboard({
       {/* Big score */}
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr auto 1fr',
+          display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          gap: 'var(--space-4)',
-          padding: 'var(--space-6)',
+          justifyContent: 'center',
+          gap: 'var(--space-3)',
+          padding: 'var(--space-6) var(--space-4)',
           background: 'rgba(0,0,0,0.35)',
           borderRadius: 'var(--radius-lg)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          border: '1px solid rgba(255,255,255,0.08)'
         }}
       >
-        {renderTeamPlayers(match.team1, 'center')}
-
-        <div style={{ fontSize: 'var(--font-size-4xl)', fontWeight: 800, letterSpacing: '4px' }}>
-          <span style={{ color: 'var(--accent-primary)' }}>{s.game1}</span>
-          <span style={{ color: 'var(--border-light)', fontWeight: 300, fontSize: 'var(--font-size-2xl)' }}> – </span>
-          <span style={{ color: 'var(--accent-primary)' }}>{s.game2}</span>
+        {/* Team names above the score */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-4)', width: '100%' }}>
+          {renderTeamPlayers(match.team1, 'left')}
+          <span style={{ alignSelf: 'center', fontSize: 'var(--font-size-3xl)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-subtle)' }}>
+            Points
+          </span>
+          {renderTeamPlayers(match.team2, 'right')}
         </div>
 
-        {renderTeamPlayers(match.team2, 'center')}
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 'var(--space-4)', fontWeight: 800, fontSize: 'clamp(6rem, 32vw, 20rem)', letterSpacing: '6px', lineHeight: 1 }}>
+          <span style={{ color: 'var(--accent-primary)', textShadow: '0 0 40px var(--accent-primary-glow)' }}>{s.game1}</span>
+          <span style={{ color: 'var(--border-light)', fontWeight: 300, fontSize: '0.5em' }}>–</span>
+          <span style={{ color: 'var(--accent-primary)', textShadow: '0 0 40px var(--accent-primary-glow)' }}>{s.game2}</span>
+        </div>
       </div>
 
       {/* Controls */}
