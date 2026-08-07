@@ -536,7 +536,7 @@ function TennisScoreboard({
           {renderTeamPlayers(match.team2, 'right')}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-4)', fontWeight: 800, fontSize: 'clamp(6rem, 32vw, 20rem)', letterSpacing: '6px', lineHeight: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-4)', fontWeight: 800, fontSize: 'clamp(6rem, 16vw, 20rem)', letterSpacing: '6px', lineHeight: 1 }}>
           <span style={{ color: 'var(--accent-primary)', textShadow: '0 0 40px var(--accent-primary-glow)' }}>{s.sets1}</span>
           <span style={{ color: 'var(--border-light)', fontWeight: 300, fontSize: '0.5em' }}>–</span>
           <span style={{ color: 'var(--accent-primary)', textShadow: '0 0 40px var(--accent-primary-glow)' }}>{s.sets2}</span>
@@ -548,7 +548,7 @@ function TennisScoreboard({
         <div style={{ fontSize: 'var(--font-size-3xl)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
           In This Game
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', fontSize: 'clamp(6rem, 32vw, 20rem)', fontWeight: 700, letterSpacing: '2px', marginTop: 'var(--space-2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', fontSize: 'clamp(6rem, 16vw, 20rem)', fontWeight: 700, letterSpacing: '2px', marginTop: 'var(--space-2)' }}>
           <span style={{ color: 'var(--accent-secondary)' }}>{tennisSideLabel(s.game1, 1, gameStatus)}</span>
           <span style={{ color: 'var(--border-light)', fontWeight: 300, fontSize: '0.5em' }}>–</span>
           <span style={{ color: 'var(--accent-secondary)' }}>{tennisSideLabel(s.game2, 2, gameStatus)}</span>
@@ -674,7 +674,7 @@ function Court21Scoreboard({
           {renderTeamPlayers(match.team2, 'right')}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 'var(--space-4)', fontWeight: 800, fontSize: 'clamp(6rem, 32vw, 20rem)', letterSpacing: '6px', lineHeight: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 'var(--space-4)', fontWeight: 800, fontSize: 'clamp(6rem, 16vw, 20rem)', letterSpacing: '6px', lineHeight: 1 }}>
           <span style={{ color: 'var(--accent-primary)', textShadow: '0 0 40px var(--accent-primary-glow)' }}>{s.game1}</span>
           <span style={{ color: 'var(--border-light)', fontWeight: 300, fontSize: '0.5em' }}>–</span>
           <span style={{ color: 'var(--accent-primary)', textShadow: '0 0 40px var(--accent-primary-glow)' }}>{s.game2}</span>
