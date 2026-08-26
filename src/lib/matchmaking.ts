@@ -584,7 +584,7 @@ export function generateSingleFixedMatch(
     if (t1 && t2) playedPairs.add(teamPairKey(t1.id, t2.id));
   });
 
-  let candidates: [FixedTeam, FixedTeam][] = [];
+  const candidates: [FixedTeam, FixedTeam][] = [];
   for (let i = 0; i < playableTeams.length; i++) {
     for (let j = i + 1; j < playableTeams.length; j++) {
       const a = playableTeams[i];
