@@ -160,8 +160,11 @@ export function Scoreboard() {
 
   const handleFinish = async () => {
     if (!selectedMatch || !liveScore) return;
-    // Persist the set-point totals as the match result.
-    await updateScore(selectedMatch.id, liveScore.sets1, liveScore.sets2);
+    // Tennis: the match result is the set-point totals.
+    // Total 21: the points live in game1/game2 (sets stay 0), so save those.
+    const score1 = isTennis ? liveScore.sets1 : liveScore.game1;
+    const score2 = isTennis ? liveScore.sets2 : liveScore.game2;
+    await updateScore(selectedMatch.id, score1, score2);
     setSelectedMatchId(null);
   };
 
