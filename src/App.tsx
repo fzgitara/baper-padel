@@ -154,7 +154,36 @@ function TournamentView() {
   );
 }
 
+/* ─── Keep the screen awake while the app is open ─────────────────────────── */
+function useWakeLock() {
+  useEffect(() => {
+    let sentinel: WakeLockSentinel | null = null;
+    const request = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          sentinel = await navigator.wakeLock.request('screen');
+        }
+      } catch {
+        // Unsupported or permission denied — the app still works, screen just
+        // may sleep. Never let a wake-lock failure break the UI.
+      }
+    };
+    request();
+    // The browser releases the lock when the tab is hidden; re-acquire it
+    // whenever the tab becomes visible again.
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') request();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      sentinel?.release().catch(() => {});
+    };
+  }, []);
+}
+
 function App() {
+  useWakeLock();
   return (
     <Routes>
       <Route path="/" element={<HomeScreen />} />

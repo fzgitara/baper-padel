@@ -390,6 +390,31 @@ function PointControls({
   );
 }
 
+/* Style for the big tappable score numbers (reset native button look). */
+const scoreTapStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  padding: '0 0.1em',
+  font: 'inherit',
+  fontWeight: 'inherit',
+  letterSpacing: 'inherit',
+  lineHeight: 'inherit',
+  color: 'inherit',
+  textShadow: 'inherit',
+  cursor: 'pointer',
+  borderRadius: 'var(--radius-md)',
+  transition: 'transform 0.05s ease',
+};
+
+/* Small hint shown under the big scoreboard. */
+function TapHint() {
+  return (
+    <div style={{ marginTop: 'var(--space-2)', fontSize: 'var(--font-size-xs)', color: 'var(--text-subtle)', textAlign: 'center' }}>
+      Tap a number to add a point
+    </div>
+  );
+}
+
 /* ── Team / player swapping (shared with MatchList) ───────────────────────── */
 interface SwapSectionProps {
   match: Match;
@@ -488,6 +513,15 @@ function TennisScoreboard({
     });
   };
 
+  // Tapping the big SET POINT number adds one set point for that side.
+  const addSetPoint = (side: 1 | 2) => {
+    setScore({
+      ...s,
+      sets1: side === 1 ? s.sets1 + 1 : s.sets1,
+      sets2: side === 2 ? s.sets2 + 1 : s.sets2,
+    });
+  };
+
   const undoGamePoint = (side: 1 | 2) => {
     const g = side === 1 ? Math.max(0, s.game1 - 1) : s.game1;
     const g2 = side === 2 ? Math.max(0, s.game2 - 1) : s.game2;
@@ -537,11 +571,12 @@ function TennisScoreboard({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-4)', fontWeight: 800, fontSize: 'clamp(5rem, 16vw, 20rem)', letterSpacing: '6px', lineHeight: 1 }}>
-          <span style={{ color: 'var(--accent-primary)', textShadow: '0 0 40px var(--accent-primary-glow)' }}>{s.sets1}</span>
+          <button type="button" onClick={() => addSetPoint(1)} title="Tap to add a set point" style={scoreTapStyle}>{s.sets1}</button>
           <span style={{ color: 'var(--border-light)', fontWeight: 300, fontSize: '0.5em' }}>–</span>
-          <span style={{ color: 'var(--accent-primary)', textShadow: '0 0 40px var(--accent-primary-glow)' }}>{s.sets2}</span>
+          <button type="button" onClick={() => addSetPoint(2)} title="Tap to add a set point" style={scoreTapStyle}>{s.sets2}</button>
         </div>
       </div>
+      <TapHint />
 
       {/* ── Current game in tennis notation ── */}
       <div style={{ textAlign: 'center', marginBottom: 'var(--space-3)' }}>
@@ -549,9 +584,9 @@ function TennisScoreboard({
           In This Game
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', fontSize: 'clamp(5rem, 16vw, 20rem)', fontWeight: 700, letterSpacing: '2px', marginTop: 'var(--space-2)' }}>
-          <span style={{ color: 'var(--accent-secondary)' }}>{tennisSideLabel(s.game1, 1, gameStatus)}</span>
+          <button type="button" onClick={() => addGamePoint(1)} title="Tap to add a point" style={{ ...scoreTapStyle, color: 'var(--accent-secondary)' }}>{tennisSideLabel(s.game1, 1, gameStatus)}</button>
           <span style={{ color: 'var(--border-light)', fontWeight: 300, fontSize: '0.5em' }}>–</span>
-          <span style={{ color: 'var(--accent-secondary)' }}>{tennisSideLabel(s.game2, 2, gameStatus)}</span>
+          <button type="button" onClick={() => addGamePoint(2)} title="Tap to add a point" style={{ ...scoreTapStyle, color: 'var(--accent-secondary)' }}>{tennisSideLabel(s.game2, 2, gameStatus)}</button>
         </div>
         {gameText && (
           <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--accent-secondary)', fontWeight: 600, marginTop: 'var(--space-1)' }}>
@@ -675,11 +710,12 @@ function Court21Scoreboard({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 'var(--space-4)', fontWeight: 800, fontSize: 'clamp(5rem, 16vw, 20rem)', letterSpacing: '6px', lineHeight: 1 }}>
-          <span style={{ color: 'var(--accent-primary)', textShadow: '0 0 40px var(--accent-primary-glow)' }}>{s.game1}</span>
+          <button type="button" onClick={() => add(1)} disabled={isComplete} title="Tap to add a point" style={scoreTapStyle}>{s.game1}</button>
           <span style={{ color: 'var(--border-light)', fontWeight: 300, fontSize: '0.5em' }}>–</span>
-          <span style={{ color: 'var(--accent-primary)', textShadow: '0 0 40px var(--accent-primary-glow)' }}>{s.game2}</span>
+          <button type="button" onClick={() => add(2)} disabled={isComplete} title="Tap to add a point" style={scoreTapStyle}>{s.game2}</button>
         </div>
       </div>
+      <TapHint />
 
       {/* Controls */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)', marginTop: 'var(--space-5)' }}>
