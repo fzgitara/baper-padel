@@ -4,6 +4,18 @@ import { useTournamentStore } from '../store/tournamentStore';
 import { Swords, Check, Shuffle, Play, ClipboardList } from 'lucide-react';
 import { MatchSwapper } from './MatchSwapper';
 import type { Match, Player, FixedTeam } from '../lib/types';
+import {
+  card,
+  input,
+  muted,
+  btnPrimary,
+  btnOutline,
+  badgeBase,
+  badgePending,
+} from '../lib/ui';
+
+const roundCls =
+  'mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400';
 
 export function MatchList() {
   const navigate = useNavigate();
@@ -71,20 +83,19 @@ export function MatchList() {
 
   return (
     <div className="flex flex-col gap-6">
-
       {/* ── Pending Matches ── */}
-      <div className="glass-card">
-        <div className="flex justify-between items-center" style={{ marginBottom: 'var(--space-6)', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
-          <h2 className="flex items-center gap-2" style={{ fontSize: 'var(--font-size-xl)' }}>
-            <Swords style={{ color: 'var(--accent-primary)' }} size={20} />
+      <div className={card}>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+            <Swords size={20} className="text-emerald-600" />
             Pending Matches
           </h2>
 
-          <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+          <div className="flex flex-wrap gap-2">
             {status === 'active' && (
               <button
                 id="generate-match-btn"
-                className="btn btn-primary"
+                className={btnPrimary}
                 onClick={generateSingleMatch}
                 title="Generate a new match"
               >
@@ -95,28 +106,28 @@ export function MatchList() {
             {pendingMatches.length > 0 && status === 'active' && (
               <button
                 id="randomize-matches-btn"
-                className="btn btn-outline"
+                className={btnOutline}
                 onClick={randomizePendingMatches}
                 title="Randomize pending match players"
               >
                 <Shuffle size={15} />
-                <span className="hide-mobile">Randomize</span>
+                <span className="hidden sm:inline">Randomize</span>
               </button>
             )}
-          </div>
-          <button
+            <button
               id="scoreboard-btn"
-              className="btn btn-outline"
+              className={btnOutline}
               onClick={() => navigate(`/tournament/${activeTournamentId}/scoreboard`)}
               title="Open the live scoreboard"
             >
               <ClipboardList size={15} />
               <span>Scoreboard</span>
             </button>
+          </div>
         </div>
 
         {pendingMatches.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 'var(--space-6) 0', fontSize: 'var(--font-size-sm)' }}>
+          <p className={`${muted} py-6 text-center text-sm`}>
             {status === 'active'
               ? 'All matches are completed. Generate a new one!'
               : 'Start the tournament to generate matches.'}
@@ -125,22 +136,10 @@ export function MatchList() {
           <div className="flex flex-col gap-6">
             {pendingRounds.map(roundNum => (
               <div key={roundNum}>
-                <div
-                  style={{
-                    fontSize: 'var(--font-size-xs)',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    color: 'var(--text-muted)',
-                    marginBottom: 'var(--space-3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--space-2)',
-                  }}
-                >
-                  <span style={{ width: 24, height: 1, background: 'var(--border-light)', display: 'inline-block' }} />
+                <div className={roundCls}>
+                  <span className="inline-block h-px w-6 bg-slate-300 dark:bg-slate-700" />
                   Round {roundNum}
-                  <span style={{ flex: 1, height: 1, background: 'var(--border-light)', display: 'inline-block' }} />
+                  <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
                 </div>
                 <div className="grid gap-4">
                   {pendingByRound[roundNum].map(match => (
@@ -167,29 +166,17 @@ export function MatchList() {
 
       {/* ── Completed Matches ── */}
       {completedRounds.length > 0 && (
-        <div className="glass-card" style={{ opacity: 0.85 }}>
-          <h2 style={{ marginBottom: 'var(--space-5)', fontSize: 'var(--font-size-xl)', color: 'var(--text-muted)' }}>
+        <div className={`${card} opacity-80`}>
+          <h2 className="mb-5 text-lg font-semibold text-slate-400 dark:text-slate-500">
             Completed Matches
           </h2>
           <div className="flex flex-col gap-6">
             {completedRounds.map(roundNum => (
               <div key={roundNum}>
-                <div
-                  style={{
-                    fontSize: 'var(--font-size-xs)',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    color: 'var(--text-subtle)',
-                    marginBottom: 'var(--space-3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--space-2)',
-                  }}
-                >
-                  <span style={{ width: 24, height: 1, background: 'var(--border-light)', display: 'inline-block' }} />
+                <div className={roundCls}>
+                  <span className="inline-block h-px w-6 bg-slate-300 dark:bg-slate-700" />
                   Round {roundNum}
-                  <span style={{ flex: 1, height: 1, background: 'var(--border-light)', display: 'inline-block' }} />
+                  <span className="h-px flex-1 bg-slate-300 dark:bg-slate-700" />
                 </div>
                 <div className="grid gap-3">
                   {completedByRound[roundNum].map(match => {
@@ -198,38 +185,26 @@ export function MatchList() {
                     return (
                       <div
                         key={match.id}
-                        style={{
-                          background: 'rgba(0,0,0,0.2)',
-                          padding: 'var(--space-3) var(--space-4)',
-                          borderRadius: 'var(--radius-lg)',
-                          border: '1px solid var(--border-light)',
-                          display: 'grid',
-                          gridTemplateColumns: '1fr auto 1fr',
-                          alignItems: 'center',
-                          gap: 'var(--space-3)',
-                        }}
+                        className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50"
                       >
                         {/* Team 1 */}
-                        <div style={{ minWidth: 0 }}>
+                        <div className="min-w-0">
                           {partnerMode === 'fixed' && findTeamByPlayers(match.team1[0], match.team1[1]) && (
-                            <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-subtle)', marginBottom: '2px' }}>
+                            <div className="mb-0.5 text-[0.65rem] uppercase tracking-wide text-slate-400 dark:text-slate-500">
                               {findTeamByPlayers(match.team1[0], match.team1[1])!.name}
                             </div>
                           )}
                           {[match.team1[0], match.team1[1]].map(pid => (
                             <div
                               key={pid}
-                              style={{
-                                fontWeight: t1win ? 600 : 400,
-                                color: t1win ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                fontSize: 'var(--font-size-sm)',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
+                              className={`truncate text-sm ${
+                                t1win
+                                  ? 'font-semibold text-emerald-600 dark:text-emerald-400'
+                                  : 'text-slate-800 dark:text-slate-100'
+                              }`}
                             >
                               {getPlayerName(pid)}
-                              <span style={{ fontSize: '0.7rem', opacity: 0.45, marginLeft: '4px' }}>
+                              <span className="ml-1 text-[0.7rem] opacity-45">
                                 ({playCount[pid] || 0}x)
                               </span>
                             </div>
@@ -237,43 +212,30 @@ export function MatchList() {
                         </div>
 
                         {/* Score */}
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 'var(--space-2)',
-                            fontWeight: 700,
-                            fontSize: 'var(--font-size-xl)',
-                            letterSpacing: '2px',
-                            flexShrink: 0,
-                          }}
-                        >
-                          <span style={{ color: t1win ? 'var(--accent-primary)' : 'var(--text-muted)' }}>{match.score1}</span>
-                          <span style={{ color: 'var(--border-light)', fontWeight: 400, fontSize: 'var(--font-size-base)' }}>–</span>
-                          <span style={{ color: t2win ? 'var(--accent-primary)' : 'var(--text-muted)' }}>{match.score2}</span>
+                        <div className="flex shrink-0 items-center gap-2 text-xl font-bold tracking-wider">
+                          <span className={t1win ? 'text-emerald-600 dark:text-emerald-400' : muted}>{match.score1}</span>
+                          <span className="text-sm font-normal text-slate-400 dark:text-slate-500">–</span>
+                          <span className={t2win ? 'text-emerald-600 dark:text-emerald-400' : muted}>{match.score2}</span>
                         </div>
 
                         {/* Team 2 */}
-                        <div style={{ minWidth: 0, textAlign: 'right' }}>
+                        <div className="min-w-0 text-right">
                           {partnerMode === 'fixed' && findTeamByPlayers(match.team2[0], match.team2[1]) && (
-                            <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-subtle)', marginBottom: '2px' }}>
+                            <div className="mb-0.5 text-[0.65rem] uppercase tracking-wide text-slate-400 dark:text-slate-500">
                               {findTeamByPlayers(match.team2[0], match.team2[1])!.name}
                             </div>
                           )}
                           {[match.team2[0], match.team2[1]].map(pid => (
                             <div
                               key={pid}
-                              style={{
-                                fontWeight: t2win ? 600 : 400,
-                                color: t2win ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                fontSize: 'var(--font-size-sm)',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
+                              className={`truncate text-sm ${
+                                t2win
+                                  ? 'font-semibold text-emerald-600 dark:text-emerald-400'
+                                  : 'text-slate-800 dark:text-slate-100'
+                              }`}
                             >
                               {getPlayerName(pid)}
-                              <span style={{ fontSize: '0.7rem', opacity: 0.45, marginLeft: '4px' }}>
+                              <span className="ml-1 text-[0.7rem] opacity-45">
                                 ({playCount[pid] || 0}x)
                               </span>
                             </div>
@@ -341,27 +303,15 @@ function MatchCard({ match, players, teams, partnerMode, getPlayerLabel, hasPart
   };
 
   return (
-    <div
-      style={{
-        background: 'rgba(255,255,255,0.025)',
-        border: '1px solid var(--border-light)',
-        borderRadius: 'var(--radius-lg)',
-        padding: 'var(--space-4)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--space-4)',
-        transition: 'border-color var(--transition-fast)',
-      }}
-    >
+    <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       {/* Round label + badge */}
-      <div className="flex justify-between items-center" style={{ fontSize: 'var(--font-size-xs)', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>
+      <div className="flex items-center justify-between text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">
         <span>Round {match.round}</span>
-        <span className="badge badge-pending">Pending</span>
+        <span className={`${badgeBase} ${badgePending}`}>Pending</span>
       </div>
 
       {/* Teams + Score — responsive stacking */}
-      <div id="match-card-body" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 'var(--space-3)' }}>
-
+      <div id="match-card-body" className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 max-sm:grid-cols-1">
         <MatchSwapper
           match={match}
           players={players}
@@ -375,11 +325,10 @@ function MatchCard({ match, players, teams, partnerMode, getPlayerLabel, hasPart
         />
 
         {/* Score inputs */}
-        <div className="flex items-center gap-2" style={{ flexShrink: 0 }}>
+        <div className="flex shrink-0 items-center gap-2">
           <input
             type="number"
-            className="input"
-            style={{ width: '58px', textAlign: 'center', fontSize: 'var(--font-size-lg)', padding: 'var(--space-2)', fontWeight: 600 }}
+            className={`${input} w-14 px-2 py-2 text-center text-lg font-semibold`}
             value={s1}
             onChange={handleS1Change}
             min="0"
@@ -387,11 +336,10 @@ function MatchCard({ match, players, teams, partnerMode, getPlayerLabel, hasPart
             {...(pointsMode === 'total21' ? { max: 21 } : {})}
             aria-label="Team 1 score"
           />
-          <span style={{ color: 'var(--text-subtle)', fontSize: 'var(--font-size-sm)' }}>–</span>
+          <span className="text-sm text-slate-400 dark:text-slate-500">–</span>
           <input
             type="number"
-            className="input"
-            style={{ width: '58px', textAlign: 'center', fontSize: 'var(--font-size-lg)', padding: 'var(--space-2)', fontWeight: 600 }}
+            className={`${input} w-14 px-2 py-2 text-center text-lg font-semibold`}
             value={s2}
             onChange={handleS2Change}
             min="0"
@@ -417,27 +365,13 @@ function MatchCard({ match, players, teams, partnerMode, getPlayerLabel, hasPart
       {/* Save button */}
       <button
         id={`save-score-${match.id}`}
-        className="btn btn-primary w-full"
+        className={`${btnPrimary} mx-auto w-full max-w-[220px]`}
         onClick={handleSave}
         disabled={s1 === '' || s2 === ''}
-        style={{ maxWidth: '220px', alignSelf: 'center' }}
       >
         <Check size={16} />
         Save Score
       </button>
-
-      {/* Responsive: stack on mobile */}
-      <style>{`
-        @media (max-width: 480px) {
-          #match-card-body {
-            grid-template-columns: 1fr !important;
-          }
-          #match-card-body > div:first-child,
-          #match-card-body > div:last-child {
-            text-align: left !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

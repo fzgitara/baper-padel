@@ -19,6 +19,16 @@ import {
   tennisSideLabel,
   applyTennisPoint,
 } from '../lib/tennisScoring';
+import {
+  card,
+  btnPrimary,
+  btnOutline,
+  muted,
+  badgeBase,
+  badgeActive,
+  badgePending,
+  badgeMeta,
+} from '../lib/ui';
 
 /** In-progress scoring state for a single match. */
 interface LiveScore {
@@ -30,6 +40,13 @@ interface LiveScore {
   game1: number;
   game2: number;
 }
+
+const panelCls =
+  'flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 dark:border-slate-700 dark:bg-slate-800/40';
+const bigScoreCls =
+  'flex items-center justify-center gap-4 font-extrabold leading-none tracking-[6px] text-7xl sm:text-9xl';
+const scoreTapCls =
+  'cursor-pointer rounded-md bg-transparent p-0 [font:inherit] transition-transform active:scale-95';
 
 export function Scoreboard() {
   const { id } = useParams();
@@ -68,18 +85,9 @@ export function Scoreboard() {
 
   if (loading && !activeTournament) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 'var(--space-4)',
-        }}
-      >
-        <div className="spinner" />
-        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' }}>Loading tournament…</span>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600 dark:border-emerald-500/30 dark:border-t-emerald-400" />
+        <span className={`${muted} text-sm`}>Loading tournament…</span>
       </div>
     );
   }
@@ -172,24 +180,19 @@ export function Scoreboard() {
     const teamName = partnerMode === 'fixed' && findTeamByPlayers(team[0], team[1])
       ? findTeamByPlayers(team[0], team[1])!.name
       : null;
+    const alignCls = align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center';
 
     return (
-      <div style={{ textAlign: align, minWidth: 0 }}>
+      <div className={`min-w-0 ${alignCls}`}>
         {teamName && (
-          <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)', marginBottom: 2 }}>
+          <div className="mb-0.5 text-[0.65rem] uppercase tracking-wide text-slate-400 dark:text-slate-500">
             {teamName}
           </div>
         )}
         {team.map(pid => (
           <div
             key={pid}
-            style={{
-              fontSize: 'var(--font-size-sm)',
-              fontWeight: 600,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
+            className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100"
           >
             {getPlayerName(pid)}
           </div>
@@ -199,35 +202,31 @@ export function Scoreboard() {
   };
 
   return (
-    <div className="container fade-in" style={{ maxWidth: '860px' }}>
+    <div className="mx-auto w-full max-w-[860px] px-4 py-8 sm:px-6">
       {/* ── Header ── */}
-      <header style={{ marginBottom: 'var(--space-6)', paddingTop: 'var(--space-5)' }}>
+      <header className="mb-6 pt-2">
         <button
-          className="btn btn-outline"
-          style={{ marginBottom: 'var(--space-4)', padding: '6px 14px', fontSize: 'var(--font-size-sm)' }}
+          className={`${btnOutline} mb-4`}
           onClick={() => navigate(`/tournament/${activeTournament.id}`)}
         >
           <ArrowLeft size={16} />
           Back to Tournament
         </button>
-        <h1 className="text-gradient" style={{ fontSize: 'var(--font-size-3xl)', marginBottom: 'var(--space-1)' }}>
+        <h1 className="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
           Scoreboard
         </h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-          <span className="badge" style={{ background: 'rgba(139,92,246,0.2)', color: '#d8b4fe', border: '1px solid rgba(139,92,246,0.3)' }}>
-            <Gauge size={11} style={{ marginRight: 4 }} />
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`${badgeBase} ${badgeMeta}`}>
+            <Gauge size={11} className="mr-1" />
             {isTennis ? 'Default' : 'Total 21'}
           </span>
-          <span className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)', border: '1px solid var(--border-light)', textTransform: 'capitalize' }}>
-            {status}
-          </span>
-          <div className="flex gap-2" style={{ marginLeft: 'auto', flexWrap: 'wrap' }}>
+          <span className={`${badgeBase} ${badgePending} capitalize`}>{status}</span>
+          <div className="ml-auto flex flex-wrap gap-2">
             {status === 'active' && (
               <button
-                className="btn btn-primary"
+                className={btnPrimary}
                 onClick={generateSingleMatch}
                 title="Generate a new match"
-                style={{ fontSize: 'var(--font-size-xs)', padding: '6px 12px' }}
               >
                 <Play size={15} />
                 <span>Generate</span>
@@ -235,13 +234,12 @@ export function Scoreboard() {
             )}
             {status === 'active' && (
               <button
-                className="btn btn-outline"
+                className={btnOutline}
                 onClick={randomizePendingMatches}
                 title="Randomize pending match players"
-                style={{ fontSize: 'var(--font-size-xs)', padding: '6px 12px' }}
               >
                 <Shuffle size={15} />
-                <span className="hide-mobile">Randomize</span>
+                <span className="hidden sm:inline">Randomize</span>
               </button>
             )}
           </div>
@@ -250,16 +248,15 @@ export function Scoreboard() {
 
       {/* ── Match Selector ── */}
       {pendingMatches.length > 0 && (
-        <div className="glass-card" style={{ marginBottom: 'var(--space-6)', padding: 'var(--space-4)' }}>
-          <div style={{ fontSize: 'var(--font-size-xs)', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: 'var(--space-3)' }}>
+        <div className={`${card} mb-6 p-4`}>
+          <div className="mb-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Select match to score
           </div>
-          <div className="flex" style={{ gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <div className="flex flex-wrap gap-2">
             {pendingMatches.map(m => (
               <button
                 key={m.id}
-                className={`btn ${selectedMatchId === m.id ? 'btn-primary' : 'btn-outline'}`}
-                style={{ fontSize: 'var(--font-size-xs)', padding: '6px 12px' }}
+                className={`${selectedMatchId === m.id ? btnPrimary : btnOutline} text-xs`}
                 onClick={() => handleChoose(m)}
                 disabled={status !== 'active'}
               >
@@ -304,9 +301,9 @@ export function Scoreboard() {
           />
         )
       ) : (
-        <div className="glass-card empty-state">
-          <Trophy size={48} className="empty-state-icon" />
-          <p style={{ color: 'var(--text-muted)' }}>
+        <div className={`${card} flex flex-col items-center justify-center gap-3 px-6 py-14 text-center`}>
+          <Trophy size={48} className="text-slate-300 dark:text-slate-700" />
+          <p className={muted}>
             {status === 'active'
               ? 'No pending matches available to score.'
               : 'Start the tournament to view the scoreboard.'}
@@ -316,30 +313,19 @@ export function Scoreboard() {
 
       {/* ── Completed Matches ── */}
       {completedMatches.length > 0 && (
-        <div className="glass-card" style={{ marginTop: 'var(--space-6)', opacity: 0.9 }}>
-          <h2 style={{ marginBottom: 'var(--space-4)', fontSize: 'var(--font-size-lg)', color: 'var(--text-muted)' }}>
-            Completed Matches
-          </h2>
+        <div className={`${card} mt-6 opacity-90`}>
+          <h2 className={`${muted} mb-4 text-lg`}>Completed Matches</h2>
           <div className="flex flex-col gap-3">
             {completedMatches.map(m => (
               <div
                 key={m.id}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr auto 1fr',
-                  alignItems: 'center',
-                  gap: 'var(--space-3)',
-                  padding: 'var(--space-3)',
-                  background: 'rgba(0,0,0,0.2)',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: 'var(--radius-lg)',
-                }}
+                className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40"
               >
                 {renderTeamPlayers(m.team1, 'left')}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontWeight: 700, fontSize: 'var(--font-size-2xl)', letterSpacing: '2px' }}>
-                  <span style={{ color: 'var(--accent-primary)' }}>{m.score1}</span>
-                  <span style={{ color: 'var(--border-light)', fontWeight: 400 }}>–</span>
-                  <span style={{ color: 'var(--accent-primary)' }}>{m.score2}</span>
+                <div className="flex items-center gap-2 text-2xl font-bold tracking-wider">
+                  <span className="text-emerald-600 dark:text-emerald-400">{m.score1}</span>
+                  <span className="font-normal text-slate-300 dark:text-slate-600">–</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">{m.score2}</span>
                 </div>
                 {renderTeamPlayers(m.team2, 'right')}
               </div>
@@ -382,37 +368,31 @@ function PointControls({
   onInc: () => void;
 }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-2)', marginTop: 'var(--space-4)' }}>
-      <button className="btn btn-outline btn-icon" onClick={onDec} disabled={!canDec} title="Decrement">
+    <div className="mt-4 flex justify-center gap-2">
+      <button
+        className="inline-flex items-center justify-center rounded-lg border border-slate-300 p-2 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+        onClick={onDec}
+        disabled={!canDec}
+        title="Decrement"
+      >
         <ArrowDown size={16} />
       </button>
-      <button className="btn btn-primary btn-icon" onClick={onInc} disabled={!canInc} title="Increment">
+      <button
+        className="inline-flex items-center justify-center rounded-lg bg-emerald-600 p-2 text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={onInc}
+        disabled={!canInc}
+        title="Increment"
+      >
         <ArrowUp size={16} />
       </button>
     </div>
   );
 }
 
-/* Style for the big tappable score numbers (reset native button look). */
-const scoreTapStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  padding: '0 0.1em',
-  font: 'inherit',
-  fontWeight: 'inherit',
-  letterSpacing: 'inherit',
-  lineHeight: 'inherit',
-  color: 'inherit',
-  textShadow: 'inherit',
-  cursor: 'pointer',
-  borderRadius: 'var(--radius-md)',
-  transition: 'transform 0.05s ease',
-};
-
 /* Small hint shown under the big scoreboard. */
 function TapHint() {
   return (
-    <div style={{ marginTop: 'var(--space-2)', fontSize: 'var(--font-size-xs)', color: 'var(--text-subtle)', textAlign: 'center' }}>
+    <div className="mt-2 text-center text-xs text-slate-400 dark:text-slate-500">
       Tap a number to add a point
     </div>
   );
@@ -441,19 +421,11 @@ function SwapSection({
   onSwapTeam,
 }: SwapSectionProps) {
   return (
-    <div
-      style={{
-        marginTop: 'var(--space-6)',
-        padding: 'var(--space-4)',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px dashed var(--border-light)',
-        background: 'rgba(255,255,255,0.02)',
-      }}
-    >
-      <div style={{ fontSize: 'var(--font-size-xs)', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: 'var(--space-3)' }}>
+    <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-4 dark:border-slate-700 dark:bg-slate-800/30">
+      <div className="mb-3 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
         Change team or player
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 'var(--space-3)' }}>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 max-sm:grid-cols-1">
         <MatchSwapper
           match={match}
           players={players}
@@ -465,7 +437,7 @@ function SwapSection({
           onSwapTeam={onSwapTeam}
           side="team1"
         />
-        <div style={{ color: 'var(--text-subtle)', fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>vs</div>
+        <div className="text-sm font-semibold text-slate-400 dark:text-slate-500">vs</div>
         <MatchSwapper
           match={match}
           players={players}
@@ -532,76 +504,61 @@ function TennisScoreboard({
   };
 
   return (
-    <div className="glass-card fade-in" style={{ borderColor: 'rgba(16,185,129,0.25)' }}>
+    <div className={`${card} border-emerald-300 dark:border-emerald-500/30`}>
       {/* Header label */}
-      <div className="flex justify-between items-center" style={{ marginBottom: 'var(--space-4)', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-        <h2 style={{ fontSize: 'var(--font-size-xl)' }} className="flex items-center gap-2">
-          <Trophy size={20} style={{ color: 'var(--accent-primary)' }} />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+          <Trophy size={20} className="text-emerald-600" />
           Round {match.round}
         </h2>
         <div className="flex items-center gap-2">
-          <span className="badge" style={{ background: 'rgba(139,92,246,0.2)', color: '#d8b4fe', border: '1px solid rgba(139,92,246,0.3)' }}>
-            Set Points
-          </span>
+          <span className={`${badgeBase} ${badgeMeta}`}>Set Points</span>
           {matchComplete && (
-            <span className="badge badge-completed">Ready to save</span>
+            <span className={`${badgeBase} ${badgeActive}`}>Ready to save</span>
           )}
         </div>
       </div>
 
       {/* ── BIG SET-POINT SCOREBOARD ── */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 'var(--space-3)',
-          padding: 'var(--space-6) var(--space-4)',
-          background: 'rgba(0,0,0,0.35)',
-          borderRadius: 'var(--radius-lg)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          marginBottom: 'var(--space-6)'
-        }}
-      >
+      <div className={`${panelCls} mb-6`}>
         {/* Team names above the score */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-4)', width: '100%' }}>
+        <div className="flex w-full justify-between gap-4">
           {renderTeamPlayers(match.team1, 'left')}
-          <span style={{ alignSelf: 'center', fontSize: 'var(--font-size-3xl)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-subtle)' }}>
+          <span className="self-center text-3xl uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
             Set Points
           </span>
           {renderTeamPlayers(match.team2, 'right')}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-4)', fontWeight: 800, fontSize: 'clamp(5rem, 16vw, 20rem)', letterSpacing: '6px', lineHeight: 1 }}>
-          <button type="button" onClick={() => addSetPoint(1)} title="Tap to add a set point" style={scoreTapStyle}>{s.sets1}</button>
-          <span style={{ color: 'var(--border-light)', fontWeight: 300, fontSize: '0.5em' }}>–</span>
-          <button type="button" onClick={() => addSetPoint(2)} title="Tap to add a set point" style={scoreTapStyle}>{s.sets2}</button>
+        <div className={`${bigScoreCls} text-emerald-600 dark:text-emerald-400`}>
+          <button type="button" onClick={() => addSetPoint(1)} title="Tap to add a set point" className={scoreTapCls}>{s.sets1}</button>
+          <span className="text-[0.5em] font-light text-slate-300 dark:text-slate-600">–</span>
+          <button type="button" onClick={() => addSetPoint(2)} title="Tap to add a set point" className={scoreTapCls}>{s.sets2}</button>
         </div>
       </div>
       <TapHint />
 
       {/* ── Current game in tennis notation ── */}
-      <div style={{ textAlign: 'center', marginBottom: 'var(--space-3)' }}>
-        <div style={{ fontSize: 'var(--font-size-3xl)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
+      <div className="mb-3 text-center">
+        <div className="text-3xl uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
           In This Game
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', fontSize: 'clamp(5rem, 16vw, 20rem)', fontWeight: 700, letterSpacing: '2px', marginTop: 'var(--space-2)' }}>
-          <button type="button" onClick={() => addGamePoint(1)} title="Tap to add a point" style={{ ...scoreTapStyle, color: 'var(--accent-secondary)' }}>{tennisSideLabel(s.game1, 1, gameStatus)}</button>
-          <span style={{ color: 'var(--border-light)', fontWeight: 300, fontSize: '0.5em' }}>–</span>
-          <button type="button" onClick={() => addGamePoint(2)} title="Tap to add a point" style={{ ...scoreTapStyle, color: 'var(--accent-secondary)' }}>{tennisSideLabel(s.game2, 2, gameStatus)}</button>
+        <div className={`${bigScoreCls} mt-2 text-slate-900 dark:text-slate-100`}>
+          <button type="button" onClick={() => addGamePoint(1)} title="Tap to add a point" className={scoreTapCls}>{tennisSideLabel(s.game1, 1, gameStatus)}</button>
+          <span className="text-[0.5em] font-light text-slate-300 dark:text-slate-600">–</span>
+          <button type="button" onClick={() => addGamePoint(2)} title="Tap to add a point" className={scoreTapCls}>{tennisSideLabel(s.game2, 2, gameStatus)}</button>
         </div>
         {gameText && (
-          <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--accent-secondary)', fontWeight: 600, marginTop: 'var(--space-1)' }}>
+          <div className="mt-1 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
             {gameText}
           </div>
         )}
       </div>
 
       {/* ── Point controls ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 'var(--font-size-xs)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)' }}>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="text-center">
+          <div className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Team 1 Points
           </div>
           <PointControls
@@ -611,8 +568,8 @@ function TennisScoreboard({
             onInc={() => addGamePoint(1)}
           />
         </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 'var(--font-size-xs)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-subtle)' }}>
+        <div className="text-center">
+          <div className="text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Team 2 Points
           </div>
           <PointControls
@@ -678,50 +635,38 @@ function Court21Scoreboard({
   };
 
   return (
-    <div className="glass-card fade-in" style={{ borderColor: 'rgba(16,185,129,0.25)' }}>
-      <div className="flex justify-between items-center" style={{ marginBottom: 'var(--space-5)', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-        <h2 style={{ fontSize: 'var(--font-size-xl)' }} className="flex items-center gap-2">
-          <Trophy size={20} style={{ color: 'var(--accent-primary)' }} />
+    <div className={`${card} border-emerald-300 dark:border-emerald-500/30`}>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+          <Trophy size={20} className="text-emerald-600" />
           Round {match.round}
         </h2>
         {isComplete && (
-          <span className="badge badge-completed">Match complete</span>
+          <span className={`${badgeBase} ${badgeActive}`}>Match complete</span>
         )}
       </div>
 
       {/* Big score */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 'var(--space-3)',
-          padding: 'var(--space-6) var(--space-4)',
-          background: 'rgba(0,0,0,0.35)',
-          borderRadius: 'var(--radius-lg)',
-          border: '1px solid rgba(255,255,255,0.08)'
-        }}
-      >
+      <div className={panelCls}>
         {/* Team names above the score */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-4)', width: '100%' }}>
+        <div className="flex w-full justify-between gap-4">
           {renderTeamPlayers(match.team1, 'left')}
-          <span style={{ alignSelf: 'center', fontSize: 'var(--font-size-3xl)', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-subtle)' }}>
+          <span className="self-center text-3xl uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
             Points
           </span>
           {renderTeamPlayers(match.team2, 'right')}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 'var(--space-4)', fontWeight: 800, fontSize: 'clamp(5rem, 16vw, 20rem)', letterSpacing: '6px', lineHeight: 1 }}>
-          <button type="button" onClick={() => add(1)} disabled={isComplete} title="Tap to add a point" style={scoreTapStyle}>{s.game1}</button>
-          <span style={{ color: 'var(--border-light)', fontWeight: 300, fontSize: '0.5em' }}>–</span>
-          <button type="button" onClick={() => add(2)} disabled={isComplete} title="Tap to add a point" style={scoreTapStyle}>{s.game2}</button>
+        <div className={`${bigScoreCls} text-emerald-600 dark:text-emerald-400`}>
+          <button type="button" onClick={() => add(1)} disabled={isComplete} title="Tap to add a point" className={scoreTapCls}>{s.game1}</button>
+          <span className="text-[0.5em] font-light text-slate-300 dark:text-slate-600">–</span>
+          <button type="button" onClick={() => add(2)} disabled={isComplete} title="Tap to add a point" className={scoreTapCls}>{s.game2}</button>
         </div>
       </div>
       <TapHint />
 
       {/* Controls */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)', marginTop: 'var(--space-5)' }}>
+      <div className="mt-5 grid grid-cols-2 gap-4">
         <PointControls canDec={s.game1 > 0} canInc={!isComplete} onDec={() => undo(1)} onInc={() => add(1)} />
         <PointControls canDec={s.game2 > 0} canInc={!isComplete} onDec={() => undo(2)} onInc={() => add(2)} />
       </div>
@@ -745,21 +690,18 @@ function Court21Scoreboard({
 /* ─── Shared footer ───────────────────────────────────────────────────────── */
 function FinishBar({ isReady, onFinish, hint }: { isReady: boolean; onFinish: () => void; hint: string }) {
   return (
-    <div style={{ marginTop: 'var(--space-6)', textAlign: 'center' }}>
+    <div className="mt-6 text-center">
       <button
-        className="btn btn-primary"
+        className={`${btnPrimary} mx-auto w-full max-w-[260px]`}
         onClick={onFinish}
         disabled={!isReady}
-        style={{ maxWidth: 260, width: '100%' }}
       >
         <Check size={16} />
         {isReady ? 'Save Match Result' : 'Complete the match to record result'}
       </button>
-      <div style={{ marginTop: 'var(--space-2)', fontSize: 'var(--font-size-xs)', color: 'var(--text-subtle)' }}>
+      <div className="mt-2 text-xs text-slate-400 dark:text-slate-500">
         {hint}
       </div>
     </div>
   );
 }
-
-

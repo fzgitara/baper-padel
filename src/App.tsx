@@ -8,16 +8,8 @@ import { MatchList } from './components/MatchList';
 import { Leaderboard } from './components/Leaderboard';
 import { HomeScreen } from './components/HomeScreen';
 import { Scoreboard } from './components/Scoreboard';
+import { VersionGate } from './components/VersionGate';
 import { ArrowLeft } from 'lucide-react';
-import './App.css';
-
-/* ─── Inline styles for TournamentView layout ─────────────────────────────── */
-const tournamentGridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '1fr',
-  gap: 'var(--space-6)',
-  minHeight: 'calc(100vh - 160px)',
-};
 
 function TournamentView() {
   const { id } = useParams();
@@ -41,22 +33,13 @@ function TournamentView() {
     return () => unsubscribe();
   }, []);
 
-  const activeTournament = tournaments.find(t => t.id === id);
+  const activeTournament = tournaments.find((t) => t.id === id);
 
   if (loading && !activeTournament) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 'var(--space-4)',
-        }}
-      >
-        <div className="spinner" />
-        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' }}>Loading tournament…</span>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600 dark:border-emerald-500/30 dark:border-t-emerald-400" />
+        <span className="text-sm text-slate-500 dark:text-slate-400">Loading tournament…</span>
       </div>
     );
   }
@@ -66,64 +49,76 @@ function TournamentView() {
   }
 
   return (
-    <div className="container fade-in">
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
       {/* ── Header ── */}
-      <header style={{ marginBottom: 'var(--space-8)', paddingTop: 'var(--space-5)' }}>
+      <header className="mb-8 pt-2">
         <button
-          className="btn btn-outline"
-          style={{ marginBottom: 'var(--space-4)', padding: '6px 14px', fontSize: 'var(--font-size-sm)' }}
+          className="mb-4 inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
           onClick={() => navigate('/')}
         >
           <ArrowLeft size={16} />
           Back to Home
         </button>
 
-        <h1 className="text-gradient" style={{ fontSize: 'var(--font-size-4xl)', marginBottom: 'var(--space-1)' }}>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
           {activeTournament.name}
         </h1>
       </header>
 
       {/* ── Two-column grid on desktop ── */}
-      <div id="tournament-grid" style={tournamentGridStyle}>
-
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr] xl:grid-cols-[360px_1fr]">
         {/* Sidebar / Left Column */}
-        <div className="flex flex-col gap-6 fade-in fade-in-delay-1">
+        <div className="flex flex-col gap-6">
           <Dashboard />
           <PlayerManagement />
           {activeTournament.partnerMode === 'fixed' && activeTournament.status === 'setup' && <TeamsSetup />}
         </div>
 
         {/* Main Content / Right Column */}
-        <div className="fade-in fade-in-delay-2">
-          <div className="tabs">
+        <div>
+          <div className="mb-6 flex gap-1 overflow-x-auto border-b border-slate-200 pb-3 dark:border-slate-800">
             <button
               id="tab-overview"
-              className={`tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+              className={`whitespace-nowrap rounded-lg px-4 py-2 font-medium transition-colors ${
+                activeTab === 'dashboard'
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
               onClick={() => setActiveTab('dashboard')}
             >
               Overview
             </button>
             <button
               id="tab-matches"
-              className={`tab ${activeTab === 'matches' ? 'active' : ''}`}
+              className={`whitespace-nowrap rounded-lg px-4 py-2 font-medium transition-colors ${
+                activeTab === 'matches'
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
               onClick={() => setActiveTab('matches')}
             >
               Matches
             </button>
             <button
               id="tab-leaderboard"
-              className={`tab ${activeTab === 'leaderboard' ? 'active' : ''}`}
+              className={`whitespace-nowrap rounded-lg px-4 py-2 font-medium transition-colors ${
+                activeTab === 'leaderboard'
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
               onClick={() => setActiveTab('leaderboard')}
             >
               Leaderboard
             </button>
           </div>
 
-          <div style={{ minHeight: '400px' }}>
+          <div className="min-h-[400px]">
             {activeTab === 'dashboard' && (
-              <div className="glass-card empty-state fade-in">
-                <h3 className="text-gradient" style={{ fontSize: 'var(--font-size-2xl)' }}>Tournament Dashboard</h3>
-                <p style={{ color: 'var(--text-muted)', maxWidth: '400px' }}>
+              <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  Tournament Dashboard
+                </h3>
+                <p className="mx-auto max-w-md text-sm text-slate-500 dark:text-slate-400">
                   Add your players on the left panel, start the tournament, and then switch to the Matches tab to begin scoring.
                 </p>
               </div>
@@ -134,22 +129,7 @@ function TournamentView() {
             {activeTab === 'leaderboard' && <Leaderboard />}
           </div>
         </div>
-
       </div>
-
-      {/* Responsive: switch to two-column on md+ */}
-      <style>{`
-        @media (min-width: 768px) {
-          #tournament-grid {
-            grid-template-columns: 320px 1fr;
-          }
-        }
-        @media (min-width: 1024px) {
-          #tournament-grid {
-            grid-template-columns: 360px 1fr;
-          }
-        }
-      `}</style>
     </div>
   );
 }
@@ -185,14 +165,16 @@ function useWakeLock() {
 function App() {
   useWakeLock();
   return (
-    <Routes>
-      <Route path="/" element={<HomeScreen />} />
-      <Route path="/tournament/:id" element={<TournamentView />} />
-      <Route path="/tournament/:id/scoreboard" element={<Scoreboard />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<HomeScreen />} />
+        <Route path="/tournament/:id" element={<TournamentView />} />
+        <Route path="/tournament/:id/scoreboard" element={<Scoreboard />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <VersionGate />
+    </>
   );
 }
 
 export default App;
-
