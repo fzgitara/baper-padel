@@ -5,6 +5,7 @@ import { Trophy, ArrowUpDown, Trash2, Download } from 'lucide-react';
 import type { Player, FixedTeam } from '../lib/types';
 import { ConfirmModal } from './ConfirmModal';
 import { exportLeaderboardPNG } from '../lib/exportLeaderboardCanvas';
+import { card, muted, btnPrimary, btnOutline, btnIconDanger } from '../lib/ui';
 
 const SORT_LABELS: Record<string, string> = {
   wins: 'Wins',
@@ -13,6 +14,13 @@ const SORT_LABELS: Record<string, string> = {
 };
 
 const SORT_ORDER: Array<'wins' | 'points' | 'diff'> = ['wins', 'points', 'diff'];
+
+const thCls =
+  'px-2 py-1.5 text-center text-[0.7rem] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400';
+const tdCenterCls = 'px-2 py-1.5 text-center';
+const winCls = 'font-semibold text-emerald-600 dark:text-emerald-400';
+const lossCls = 'text-red-500 dark:text-red-400';
+const mutedNumCls = 'text-slate-500 dark:text-slate-400';
 
 export function Leaderboard() {
   const [sortBy, setSortBy] = useState<'wins' | 'points' | 'diff'>('wins');
@@ -57,42 +65,40 @@ export function Leaderboard() {
 
   if (leaderboard.length === 0) {
     return (
-      <div className="glass-card empty-state">
-        <Trophy size={48} className="empty-state-icon" />
-        <p style={{ color: 'var(--text-muted)' }}>No match data available yet.</p>
+      <div className={`${card} flex flex-col items-center justify-center gap-3 px-6 py-14 text-center`}>
+        <Trophy size={48} className="text-slate-300 dark:text-slate-700" />
+        <p className={muted}>No match data available yet.</p>
       </div>
     );
   }
 
   return (
-    <div className="glass-card">
+    <div className={card}>
       {/* ── Header ── */}
-      <div className="flex justify-between items-center" style={{ marginBottom: 'var(--space-6)', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
-        <h2 className="flex items-center gap-2 text-gradient" style={{ fontSize: 'var(--font-size-xl)' }}>
-          <Trophy size={20} />
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+          <Trophy size={20} className="text-emerald-600" />
           Leaderboard
         </h2>
 
         <div className="flex items-center gap-2">
           <button
             id="export-leaderboard-btn"
-            className="btn btn-primary"
+            className={btnPrimary}
             onClick={handleExportPNG}
             title="Download PNG with transparent background"
             aria-label="Export full leaderboard as transparent PNG image"
-            style={{ fontSize: 'var(--font-size-xs)', padding: '6px 12px', gap: '6px' }}
           >
             <Download size={14} />
-            Export PNG
+            <span className="hidden sm:inline">Export PNG</span>
           </button>
 
           <button
             id="leaderboard-sort-btn"
-            className="btn btn-outline"
+            className={btnOutline}
             onClick={cycleSortBy}
             title="Toggle sorting"
             aria-label={`Currently sorted by ${SORT_LABELS[sortBy]}. Click to change.`}
-            style={{ fontSize: 'var(--font-size-xs)', padding: '6px 12px', gap: '6px' }}
           >
             <ArrowUpDown size={14} />
             Sort: {SORT_LABELS[sortBy]}
@@ -101,18 +107,18 @@ export function Leaderboard() {
       </div>
 
       {/* ── Table ── */}
-      <div className="table-wrapper">
-        <table style={{ fontSize: 'var(--font-size-xs)' }}>
+      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+        <table className="w-full border-collapse text-xs">
           <thead>
             <tr>
-              <th style={{ width: '28px', textAlign: 'center', padding: '6px 4px' }}>#</th>
-              <th style={{ padding: '6px 8px' }}>{isFixed ? 'Team' : 'Player'}</th>
-              <th style={{ textAlign: 'center', width: '36px', padding: '6px 4px' }}>W</th>
-              <th style={{ textAlign: 'center', width: '36px', padding: '6px 4px' }}>L</th>
-              <th style={{ textAlign: 'center', width: '36px', padding: '6px 4px' }}>GP</th>
-              <th style={{ textAlign: 'center', width: '44px', padding: '6px 4px' }}>Diff</th>
-              <th style={{ textAlign: 'center', width: '44px', padding: '6px 4px' }}>Pts</th>
-              <th style={{ textAlign: 'center', width: '44px', padding: '6px 4px' }}>Act</th>
+              <th className={`${thCls} w-7`}>#</th>
+              <th className={`${thCls} px-2 py-1.5 text-left`}>{isFixed ? 'Team' : 'Player'}</th>
+              <th className={`${thCls} w-9`}>W</th>
+              <th className={`${thCls} w-9`}>L</th>
+              <th className={`${thCls} w-10`}>GP</th>
+              <th className={`${thCls} w-12`}>Diff</th>
+              <th className={`${thCls} w-12`}>Pts</th>
+              <th className={`${thCls} w-12`}>Act</th>
             </tr>
           </thead>
           <tbody>
@@ -122,41 +128,46 @@ export function Leaderboard() {
               if (isFixed && teamLeaderboard) {
                 const te = teamLeaderboard[idx] as { team: FixedTeam; members: Player[]; wins: number; losses: number; matchesPlayed: number; totalPoints: number; pointDiff: number };
                 return (
-                  <tr key={te.team.id} style={isTop3 ? { background: 'rgba(16,185,129,0.04)' } : {}}>
-                    <td style={{ textAlign: 'center', fontWeight: 700, padding: '6px 4px' }}>
+                  <tr
+                    key={te.team.id}
+                    className={`border-t border-slate-100 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 ${
+                      isTop3 ? 'bg-emerald-50/40 dark:bg-emerald-500/5' : ''
+                    }`}
+                  >
+                    <td className={`${tdCenterCls} font-bold`}>
                       {isTop3 ? (
                         <span style={{ color: medalColors[idx] }}>
                           {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
                         </span>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>{idx + 1}</span>
+                        <span className={mutedNumCls}>{idx + 1}</span>
                       )}
                     </td>
-                    <td style={{ padding: '6px 8px' }}>
-                      <div style={{ fontWeight: isTop3 ? 600 : 400 }}>{te.team.name}</div>
+                    <td className="px-2 py-1.5">
+                      <div className={isTop3 ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-200'}>
+                        {te.team.name}
+                      </div>
                       {te.members.length > 0 && (
-                        <div style={{ fontSize: '0.7rem', lineHeight: 1.3, color: 'var(--text-muted)' }}>
+                        <div className={`${mutedNumCls} text-[0.7rem] leading-tight`}>
                           {te.members.map(m => m.name).join(' & ')}
                         </div>
                       )}
                     </td>
-                    <td style={{ textAlign: 'center', color: 'var(--accent-primary)', fontWeight: 600, padding: '6px 4px' }}>{te.wins}</td>
-                    <td style={{ textAlign: 'center', color: 'var(--danger)', padding: '6px 4px' }}>{te.losses}</td>
-                    <td style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '6px 4px' }}>{te.matchesPlayed}</td>
-                    <td style={{
-                      textAlign: 'center',
-                      fontWeight: 600,
-                      padding: '6px 4px',
-                      color: te.pointDiff > 0 ? 'var(--accent-primary)' : te.pointDiff < 0 ? 'var(--danger)' : 'var(--text-muted)',
-                    }}>
+                    <td className={`${tdCenterCls} ${winCls}`}>{te.wins}</td>
+                    <td className={`${tdCenterCls} ${lossCls}`}>{te.losses}</td>
+                    <td className={`${tdCenterCls} ${mutedNumCls}`}>{te.matchesPlayed}</td>
+                    <td
+                      className={`${tdCenterCls} font-semibold ${
+                        te.pointDiff > 0 ? winCls : te.pointDiff < 0 ? lossCls : mutedNumCls
+                      }`}
+                    >
                       {te.pointDiff > 0 ? '+' : ''}{te.pointDiff}
                     </td>
-                    <td style={{ textAlign: 'center', fontWeight: 600, padding: '6px 4px' }}>{te.totalPoints}</td>
-                    <td style={{ textAlign: 'center', padding: '6px 4px' }}>
+                    <td className={`${tdCenterCls} font-semibold`}>{te.totalPoints}</td>
+                    <td className={tdCenterCls}>
                       <button
                         id={`delete-team-${te.team.id}`}
-                        className="btn btn-danger btn-icon"
-                        style={{ padding: '4px', borderRadius: 'var(--radius-sm)', display: 'inline-flex' }}
+                        className={btnIconDanger}
                         title={`Remove ${te.team.name}`}
                         onClick={() => setTeamToDelete(te.team)}
                       >
@@ -168,36 +179,41 @@ export function Leaderboard() {
               }
               const pe = entry as { player: Player; wins: number; losses: number; matchesPlayed: number; totalPoints: number; pointDiff: number };
               return (
-                <tr key={pe.player.id} style={isTop3 ? { background: 'rgba(16,185,129,0.04)' } : {}}>
-                  <td style={{ textAlign: 'center', fontWeight: 700, padding: '6px 4px' }}>
+                <tr
+                  key={pe.player.id}
+                  className={`border-t border-slate-100 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 ${
+                    isTop3 ? 'bg-emerald-50/40 dark:bg-emerald-500/5' : ''
+                  }`}
+                >
+                  <td className={`${tdCenterCls} font-bold`}>
                     {isTop3 ? (
                       <span style={{ color: medalColors[idx] }}>
                         {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
                       </span>
                     ) : (
-                      <span style={{ color: 'var(--text-muted)' }}>{idx + 1}</span>
+                      <span className={mutedNumCls}>{idx + 1}</span>
                     )}
                   </td>
-                  <td style={{ padding: '6px 8px' }}>
-                    <span style={{ fontWeight: isTop3 ? 600 : 400 }}>{pe.player.name}</span>
+                  <td className="px-2 py-1.5">
+                    <span className={isTop3 ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-200'}>
+                      {pe.player.name}
+                    </span>
                   </td>
-                  <td style={{ textAlign: 'center', color: 'var(--accent-primary)', fontWeight: 600, padding: '6px 4px' }}>{pe.wins}</td>
-                  <td style={{ textAlign: 'center', color: 'var(--danger)', padding: '6px 4px' }}>{pe.losses}</td>
-                  <td style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '6px 4px' }}>{pe.matchesPlayed}</td>
-                  <td style={{
-                    textAlign: 'center',
-                    fontWeight: 600,
-                    padding: '6px 4px',
-                    color: pe.pointDiff > 0 ? 'var(--accent-primary)' : pe.pointDiff < 0 ? 'var(--danger)' : 'var(--text-muted)',
-                  }}>
+                  <td className={`${tdCenterCls} ${winCls}`}>{pe.wins}</td>
+                  <td className={`${tdCenterCls} ${lossCls}`}>{pe.losses}</td>
+                  <td className={`${tdCenterCls} ${mutedNumCls}`}>{pe.matchesPlayed}</td>
+                  <td
+                    className={`${tdCenterCls} font-semibold ${
+                      pe.pointDiff > 0 ? winCls : pe.pointDiff < 0 ? lossCls : mutedNumCls
+                    }`}
+                  >
                     {pe.pointDiff > 0 ? '+' : ''}{pe.pointDiff}
                   </td>
-                  <td style={{ textAlign: 'center', fontWeight: 600, padding: '6px 4px' }}>{pe.totalPoints}</td>
-                  <td style={{ textAlign: 'center', padding: '6px 4px' }}>
+                  <td className={`${tdCenterCls} font-semibold`}>{pe.totalPoints}</td>
+                  <td className={tdCenterCls}>
                     <button
                       id={`delete-participant-${pe.player.id}`}
-                      className="btn btn-danger btn-icon"
-                      style={{ padding: '4px', borderRadius: 'var(--radius-sm)', display: 'inline-flex' }}
+                      className={btnIconDanger}
                       title={`Remove ${pe.player.name}`}
                       onClick={() => setPlayerToDelete(pe.player)}
                     >
@@ -235,10 +251,9 @@ export function Leaderboard() {
       />
 
       {/* ── Tiebreaker footnote ── */}
-      <div style={{ marginTop: 'var(--space-4)', fontSize: 'var(--font-size-xs)', color: 'var(--text-subtle)' }}>
+      <div className={`${muted} mt-4 text-xs`}>
         Tie-breaker: {sortBy === 'wins' ? 'Wins → Diff → Pts' : sortBy === 'points' ? 'Pts → Wins → Diff' : 'Diff → Wins → Pts'}
       </div>
     </div>
   );
 }
-

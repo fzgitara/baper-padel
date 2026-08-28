@@ -3,6 +3,7 @@ import { useTournamentStore } from '../store/tournamentStore';
 import { UserPlus, UserMinus, Users } from 'lucide-react';
 import type { Player } from '../lib/types';
 import { ConfirmModal } from './ConfirmModal';
+import { card, input, btnPrimary, btnIconDanger, badgeBase, badgeActive, muted } from '../lib/ui';
 
 export function PlayerManagement() {
   const [newPlayerName, setNewPlayerName] = useState('');
@@ -30,25 +31,25 @@ export function PlayerManagement() {
   };
 
   return (
-    <div className="glass-card">
+    <div className={card}>
       {/* ── Header ── */}
-      <div className="flex justify-between items-center" style={{ marginBottom: 'var(--space-5)' }}>
-        <h2 className="flex items-center gap-2" style={{ fontSize: 'var(--font-size-xl)' }}>
-          <Users style={{ color: 'var(--accent-primary)' }} size={20} />
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+          <Users size={20} className="text-emerald-600" />
           Players
         </h2>
-        <span className="badge badge-completed">
+        <span className={`${badgeBase} ${badgeActive}`}>
           {activePlayers.length} Active
         </span>
       </div>
 
       {/* ── Add Player Form ── */}
-      <form onSubmit={handleAdd} className="flex gap-2" style={{ marginBottom: 'var(--space-5)' }}>
+      <form onSubmit={handleAdd} className="mb-5 flex gap-2">
         <input
           id="add-player-input"
           type="text"
           list="global-players"
-          className="input"
+          className={input}
           placeholder="Enter player name…"
           value={newPlayerName}
           onChange={(e) => setNewPlayerName(e.target.value)}
@@ -61,54 +62,32 @@ export function PlayerManagement() {
         <button
           id="add-player-btn"
           type="submit"
-          className="btn btn-primary"
+          className={`${btnPrimary} flex-shrink-0`}
           disabled={!newPlayerName.trim()}
-          style={{ flexShrink: 0 }}
           aria-label="Add player"
         >
           <UserPlus size={18} />
-          <span className="hide-mobile">Add</span>
+          <span className="hidden sm:inline">Add</span>
         </button>
       </form>
 
       {/* ── Player List ── */}
       {activePlayers.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 'var(--space-5) 0', fontSize: 'var(--font-size-sm)' }}>
-          No players added yet.
-        </p>
+        <p className={`${muted} py-5 text-center text-sm`}>No players added yet.</p>
       ) : (
-        <div style={{ display: 'grid', gap: 'var(--space-2)', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {activePlayers.map(player => (
             <div
               key={player.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: 'var(--space-2)',
-                padding: 'var(--space-2) var(--space-3)',
-                background: 'rgba(255, 255, 255, 0.04)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-light)',
-                transition: 'background var(--transition-fast), border-color var(--transition-fast)',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)';
-                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.15)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
-                (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)';
-              }}
+              className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-100 px-3 py-2 transition-colors hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
             >
-              <span style={{ fontWeight: 500, fontSize: 'var(--font-size-sm)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">
                 {player.name}
               </span>
               <button
                 id={`remove-player-${player.id}`}
                 onClick={() => setPlayerToDelete(player)}
-                className="btn btn-danger btn-icon"
-                style={{ padding: '5px', borderRadius: 'var(--radius-sm)', flexShrink: 0 }}
+                className={btnIconDanger}
                 title={`Remove ${player.name}`}
                 aria-label={`Remove player ${player.name}`}
               >

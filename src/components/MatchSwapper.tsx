@@ -20,6 +20,9 @@ interface MatchSwapperProps {
   side: 'team1' | 'team2';
 }
 
+const playerSelectCls =
+  'w-full cursor-pointer border-b border-dashed border-slate-300 bg-transparent py-0.5 text-sm font-medium text-slate-900 outline-none transition-colors focus:border-emerald-500 dark:border-slate-600 dark:text-slate-100';
+
 export function MatchSwapper({
   match,
   players,
@@ -43,26 +46,11 @@ export function MatchSwapper({
     <select
       value={playerId}
       onChange={(e) => onSwap(match.id, playerId, e.target.value)}
-      style={{
-        background: 'transparent',
-        border: 'none',
-        borderBottom: '1px dashed rgba(255,255,255,0.2)',
-        color: 'var(--text-primary)',
-        fontSize: 'var(--font-size-sm)',
-        fontWeight: 500,
-        outline: 'none',
-        cursor: 'pointer',
-        width: '100%',
-        padding: '3px 0',
-        fontFamily: "'Outfit', sans-serif",
-        transition: 'border-color var(--transition-fast)',
-      }}
-      onFocus={(e) => (e.target.style.borderBottomColor = 'var(--accent-primary)')}
-      onBlur={(e) => (e.target.style.borderBottomColor = 'rgba(255,255,255,0.2)')}
+      className={playerSelectCls}
       title="Click to swap player"
     >
       {players.map((p: Player) => (
-        <option key={p.id} value={p.id} style={{ color: '#000', background: '#fff' }}>
+        <option key={p.id} value={p.id}>
           {getPlayerLabel(p.id)}
         </option>
       ))}
@@ -76,13 +64,13 @@ export function MatchSwapper({
 
     return (
       <div>
-        <div style={{ marginBottom: 'var(--space-1)' }}>
-          <span style={{ fontSize: '0.7rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
+        <div className="mb-1">
+          <span className="text-[0.7rem] uppercase tracking-wide text-slate-400 dark:text-slate-500">
             {currentTeam?.name || 'Team'}
           </span>
         </div>
         {members.map(pid => (
-          <div key={pid} style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div key={pid} className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
             {getPlayerLabel(pid)}
           </div>
         ))}
@@ -101,7 +89,7 @@ export function MatchSwapper({
           onSwapTeam(match.id, current.playerIds, next.playerIds);
         }
       }}
-      style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}
+      className="w-full cursor-pointer bg-transparent text-sm font-semibold text-slate-900 outline-none dark:text-slate-100"
       title="Click to change team on this side"
     >
       {teams
@@ -113,19 +101,19 @@ export function MatchSwapper({
   );
 
   const team = side === 'team1' ? match.team1 : match.team2;
-  const align = side === 'team1' ? 'left' : 'right';
+  const align = side === 'team1' ? 'text-left' : 'text-right max-sm:text-left';
   const teamSelectExclude =
     side === 'team1'
       ? findTeamByPlayers(match.team2[0], match.team2[1])?.id
       : findTeamByPlayers(match.team1[0], match.team1[1])?.id;
 
   return (
-    <div style={{ textAlign: align, minWidth: 0 }}>
+    <div className={`min-w-0 ${align}`}>
       {partnerMode === 'fixed'
         ? (
-            <div style={{ textAlign: align }}>
+            <div className={align}>
               {renderFixedTeamSlot(team[0], team[1])}
-              <div style={{ marginTop: 'var(--space-2)' }}>
+              <div className="mt-2">
                 {renderFixedTeamSelect(findTeamByPlayers(team[0], team[1]), teamSelectExclude)}
               </div>
             </div>
@@ -133,23 +121,12 @@ export function MatchSwapper({
         : (
             <>
               {renderPlayerSelect(team[0])}
-              <div style={{ marginTop: 'var(--space-2)' }}>{renderPlayerSelect(team[1])}</div>
+              <div className="mt-2">{renderPlayerSelect(team[1])}</div>
               {hasPartneredBefore(team[0], team[1]) && (
-                <div style={{ marginTop: 'var(--space-1)' }}>
+                <div className="mt-1">
                   <span
                     title="These players have partnered before"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '3px',
-                      fontSize: '0.65rem',
-                      background: 'rgba(245, 158, 11, 0.12)',
-                      color: 'var(--warn)',
-                      border: '1px solid rgba(245,158,11,0.25)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '1px 6px',
-                      fontWeight: 600,
-                    }}
+                    className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[0.65rem] font-semibold text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-400"
                   >
                     <ArrowLeftRight size={9} />
                     repeat

@@ -1,5 +1,18 @@
 import { useTournamentStore } from '../store/tournamentStore';
 import { Play, RotateCcw, Activity, CheckCircle } from 'lucide-react';
+import {
+  card,
+  btnPrimary,
+  btnDanger,
+  statTile,
+  statValue,
+  statValueAccent,
+  statLabel,
+  badgeBase,
+  badgeActive,
+  badgePending,
+  badgeMeta,
+} from '../lib/ui';
 
 export function Dashboard() {
   const { tournaments, activeTournamentId, startTournament, resetTournament, updateTotalCourts, finishTournament } = useTournamentStore();
@@ -15,90 +28,73 @@ export function Dashboard() {
   const canStart = partnerMode === 'fixed' ? readyTeams >= 2 : activePlayers >= 4;
 
   return (
-    <div className="glass-card flex flex-col gap-6">
+    <div className={`${card} flex flex-col gap-6 p-6`}>
       {/* ── Header ── */}
-      <div className="flex justify-between items-center">
-        <h2 className="flex items-center gap-2" style={{ fontSize: 'var(--font-size-xl)' }}>
-          <Activity style={{ color: 'var(--accent-primary)' }} size={20} />
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+          <Activity size={20} className="text-emerald-600" />
           Tournament Status
-          {/* ── Realtime Connection Status ── */}
         </h2>
         <ConnectionDot />
       </div>
-      <div className="flex items-center gap-2">
-        <span className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)', border: '1px solid var(--border-light)', textTransform: 'capitalize' }}>
-          {format}
-        </span>
-        <span className="badge" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-muted)', border: '1px solid var(--border-light)', textTransform: 'capitalize' }}>
+      <div className="flex items-center gap-2 text-xs">
+        <span className={`${badgeBase} ${badgeMeta} capitalize`}>{format}</span>
+        <span className={`${badgeBase} ${badgeMeta} capitalize`}>
           {(partnerMode || 'rotating') === 'fixed' ? 'Fixed' : 'Rotating'}
         </span>
-        <span className={`badge ${status === 'active' ? 'badge-completed' : 'badge-pending'}`}>
+        <span className={`${badgeBase} ${status === 'active' ? badgeActive : badgePending}`}>
           {status}
         </span>
       </div>
 
       {/* ── Stat Tiles ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 'var(--space-3)' }}>
+      <div className="grid grid-cols-2 gap-3">
         {/* Players / Teams */}
-        <div className="stat-tile">
-          <div className="stat-value" style={{ color: 'var(--accent-primary)' }}>
+        <div className={statTile}>
+          <div className={statValueAccent}>
             {partnerMode === 'fixed' ? readyTeams : activePlayers}
           </div>
-          <div className="stat-label">{partnerMode === 'fixed' ? 'Ready Teams' : 'Players'}</div>
+          <div className={statLabel}>{partnerMode === 'fixed' ? 'Ready Teams' : 'Players'}</div>
         </div>
 
         {/* Courts (editable) */}
-        <div className="stat-tile" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div className={`${statTile} flex flex-col items-center`}>
           <input
             type="number"
             value={totalCourts}
             onChange={(e) => updateTotalCourts(Math.max(1, parseInt(e.target.value) || 1))}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              borderBottom: '2px solid rgba(255,255,255,0.15)',
-              color: '#fff',
-              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-              fontWeight: 700,
-              width: '60px',
-              textAlign: 'center',
-              outline: 'none',
-              lineHeight: 1,
-              marginBottom: 'var(--space-1)',
-              transition: 'border-color var(--transition-fast)',
-            }}
-            onFocus={(e) => (e.target.style.borderBottomColor = 'var(--accent-primary)')}
-            onBlur={(e) => (e.target.style.borderBottomColor = 'rgba(255,255,255,0.15)')}
+            className="w-14 border-b-2 border-slate-300 bg-transparent text-center text-3xl font-bold text-slate-900 outline-none transition-colors focus:border-emerald-500 dark:border-slate-700 dark:text-slate-100"
             min="1"
             title="Edit total courts"
             aria-label="Total courts"
           />
-          <div className="stat-label">Courts</div>
+          <div className={statLabel}>Courts</div>
         </div>
 
         {/* Matches */}
-        <div className="stat-tile">
-          <div className="stat-value" style={{ color: 'var(--accent-secondary)' }}>
-            {completedMatches}<span style={{ fontSize: '1rem', fontWeight: 400, color: 'var(--text-muted)' }}>/{totalMatches}</span>
+        <div className={statTile}>
+          <div className={statValue}>
+            {completedMatches}
+            <span className="text-base font-normal text-slate-400 dark:text-slate-500">/{totalMatches}</span>
           </div>
-          <div className="stat-label">Matches</div>
+          <div className={statLabel}>Matches</div>
         </div>
 
         {/* Points mode */}
-        <div className="stat-tile">
-          <div className="stat-value" style={{ fontSize: 'var(--font-size-xl)', color: 'var(--text-primary)' }}>
+        <div className={statTile}>
+          <div className={`${statValue} text-xl`}>
             {pointsMode === 'default' ? 'Default' : '21'}
           </div>
-          <div className="stat-label">Points</div>
+          <div className={statLabel}>Points</div>
         </div>
       </div>
 
       {/* ── Action Buttons ── */}
-      <div className="flex gap-3" style={{ marginTop: 'var(--space-1)' }}>
+      <div className="mt-1 flex gap-3">
         {status === 'setup' && (
           <button
             id="start-tournament-btn"
-            className="btn btn-primary w-full"
+            className={`${btnPrimary} w-full`}
             onClick={startTournament}
             disabled={!canStart}
           >
@@ -112,8 +108,7 @@ export function Dashboard() {
         {status === 'active' && (
           <button
             id="finish-tournament-btn"
-            className="btn btn-primary"
-            style={{ flex: 1 }}
+            className={`${btnPrimary} flex-1`}
             onClick={() => {
               if (window.confirm('Finish the tournament? No more matches can be generated.')) {
                 finishTournament();
@@ -128,7 +123,7 @@ export function Dashboard() {
         {status !== 'setup' && (
           <button
             id="reset-tournament-btn"
-            className="btn btn-danger"
+            className={btnDanger}
             style={{ flex: status === 'active' ? '0 0 auto' : 1 }}
             onClick={() => {
               if (window.confirm('Reset the tournament? This cannot be undone.')) {
@@ -157,20 +152,18 @@ export function ConnectionDot() {
   const config = STATUS_CONFIG[connectionStatus] || STATUS_CONFIG.disconnected;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <div className="flex items-center gap-2">
       <span
         title={config.label}
+        className={`inline-block h-2 w-2 rounded-full ${
+          connectionStatus === 'connecting' ? 'animate-pulse' : ''
+        }`}
         style={{
-          display: 'inline-block',
-          width: 8,
-          height: 8,
-          borderRadius: '50%',
           background: config.color,
           boxShadow: `0 0 6px 1px ${config.glow}`,
-          animation: connectionStatus === 'connecting' ? 'pulse-dot 1.2s ease-in-out infinite' : 'none',
         }}
       />
-      <span style={{ color: config.color, fontSize: 'var(--font-size-xs)' }}>{config.label}</span>
+      <span className="text-xs" style={{ color: config.color }}>{config.label}</span>
     </div>
   );
 }
