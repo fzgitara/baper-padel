@@ -42,9 +42,9 @@ interface LiveScore {
 }
 
 const panelCls =
-  'flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 dark:border-slate-700 dark:bg-slate-800/40';
+  'flex min-h-[24vh] flex-col items-center justify-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/40';
 const bigScoreCls =
-  'flex items-center justify-center gap-4 font-extrabold leading-none tracking-[6px] text-7xl sm:text-9xl';
+  'flex items-center justify-center gap-6 font-extrabold leading-none tracking-[6px] text-[clamp(6rem,18vw,24rem)]';
 const scoreTapCls =
   'cursor-pointer rounded-md bg-transparent p-0 [font:inherit] transition-transform active:scale-95';
 
@@ -176,27 +176,29 @@ export function Scoreboard() {
     setSelectedMatchId(null);
   };
 
-  const renderTeamPlayers = (team: string[], align: 'left' | 'right' | 'center') => {
+  const renderTeamPlayers = (team: string[], align: 'left' | 'right' | 'center', fontSize: string = 'text-xl') => {
     const teamName = partnerMode === 'fixed' && findTeamByPlayers(team[0], team[1])
       ? findTeamByPlayers(team[0], team[1])!.name
       : null;
     const alignCls = align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center';
 
     return (
-      <div className={`min-w-0 ${alignCls}`}>
+      <div className={`min-w-0 w-full ${alignCls}`}>
         {teamName && (
           <div className="mb-0.5 text-[0.65rem] uppercase tracking-wide text-slate-400 dark:text-slate-500">
             {teamName}
           </div>
         )}
-        {team.map(pid => (
-          <div
-            key={pid}
-            className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100"
-          >
-            {getPlayerName(pid)}
-          </div>
-        ))}
+        <div className={`p-2`}>
+          {team.map(pid => (
+            <div
+              key={pid}
+              className={`truncate ${fontSize} font-semibold text-slate-800 dark:text-slate-100`}
+            >
+              {getPlayerName(pid)}
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
@@ -229,7 +231,7 @@ export function Scoreboard() {
                 title="Generate a new match"
               >
                 <Play size={15} />
-                <span>Generate</span>
+                <span className="hidden sm:inline">Generate</span>
               </button>
             )}
             {status === 'active' && (
@@ -321,13 +323,13 @@ export function Scoreboard() {
                 key={m.id}
                 className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/40"
               >
-                {renderTeamPlayers(m.team1, 'left')}
+                {renderTeamPlayers(m.team1, 'left', 'text-md')}
                 <div className="flex items-center gap-2 text-2xl font-bold tracking-wider">
                   <span className="text-emerald-600 dark:text-emerald-400">{m.score1}</span>
                   <span className="font-normal text-slate-300 dark:text-slate-600">–</span>
                   <span className="text-emerald-600 dark:text-emerald-400">{m.score2}</span>
                 </div>
-                {renderTeamPlayers(m.team2, 'right')}
+                {renderTeamPlayers(m.team2, 'right', 'text-md')}
               </div>
             ))}
           </div>
@@ -338,7 +340,7 @@ export function Scoreboard() {
 }
 
 /* ── Shared team controls / header helpers ────────────────────────────────── */
-type RenderPlayers = (team: string[], align: 'left' | 'right' | 'center') => React.ReactNode;
+type RenderPlayers = (team: string[], align: 'left' | 'right' | 'center', fontSize?: string) => React.ReactNode;
 
 interface BaseScoreboardProps {
   match: Match;
@@ -368,22 +370,22 @@ function PointControls({
   onInc: () => void;
 }) {
   return (
-    <div className="mt-4 flex justify-center gap-2">
+    <div>
       <button
-        className="inline-flex items-center justify-center rounded-lg border border-slate-300 p-2 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
-        onClick={onDec}
-        disabled={!canDec}
-        title="Decrement"
-      >
-        <ArrowDown size={16} />
-      </button>
-      <button
-        className="inline-flex items-center justify-center rounded-lg bg-emerald-600 p-2 text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full min-h-[48px] my-2 inline-flex items-center justify-center rounded-lg bg-emerald-600 p-2 text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
         onClick={onInc}
         disabled={!canInc}
         title="Increment"
       >
         <ArrowUp size={16} />
+      </button>
+      <button
+        className="w-full min-h-[48px] my-2 inline-flex items-center justify-center rounded-lg border border-slate-300 p-2 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+        onClick={onDec}
+        disabled={!canDec}
+        title="Decrement"
+      >
+        <ArrowDown size={16} />
       </button>
     </div>
   );
@@ -488,15 +490,6 @@ function TennisScoreboard({
     });
   };
 
-  // Tapping the big SET POINT number adds one set point for that side.
-  const addSetPoint = (side: 1 | 2) => {
-    setScore({
-      ...s,
-      sets1: side === 1 ? s.sets1 + 1 : s.sets1,
-      sets2: side === 2 ? s.sets2 + 1 : s.sets2,
-    });
-  };
-
   const undoGamePoint = (side: 1 | 2) => {
     const g = side === 1 ? Math.max(0, s.game1 - 1) : s.game1;
     const g2 = side === 2 ? Math.max(0, s.game2 - 1) : s.game2;
@@ -520,20 +513,19 @@ function TennisScoreboard({
       </div>
 
       {/* ── BIG SET-POINT SCOREBOARD ── */}
+      <div className="flex w-full justify-between gap-4 mb-2">
+        {renderTeamPlayers(match.team1, 'center')}
+        {renderTeamPlayers(match.team2, 'center')}
+      </div>
       <div className={`${panelCls} mb-6`}>
         {/* Team names above the score */}
-        <div className="flex w-full justify-between gap-4">
-          {renderTeamPlayers(match.team1, 'left')}
-          <span className="self-center text-3xl uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
-            Set Points
-          </span>
-          {renderTeamPlayers(match.team2, 'right')}
-        </div>
-
+        <span className="self-center text-3xl uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
+          Set Points
+        </span>
         <div className={`${bigScoreCls} text-emerald-600 dark:text-emerald-400`}>
-          <button type="button" onClick={() => addSetPoint(1)} title="Tap to add a set point" className={scoreTapCls}>{s.sets1}</button>
-          <span className="text-[0.5em] font-light text-slate-300 dark:text-slate-600">–</span>
-          <button type="button" onClick={() => addSetPoint(2)} title="Tap to add a set point" className={scoreTapCls}>{s.sets2}</button>
+          <span className={scoreTapCls}>{s.sets1}</span>
+          <span className="text-[0.3em] font-light text-slate-300 dark:text-slate-600">–</span>
+          <span className={scoreTapCls}>{s.sets2}</span>
         </div>
       </div>
       <TapHint />
@@ -545,7 +537,7 @@ function TennisScoreboard({
         </div>
         <div className={`${bigScoreCls} mt-2 text-slate-900 dark:text-slate-100`}>
           <button type="button" onClick={() => addGamePoint(1)} title="Tap to add a point" className={scoreTapCls}>{tennisSideLabel(s.game1, 1, gameStatus)}</button>
-          <span className="text-[0.5em] font-light text-slate-300 dark:text-slate-600">–</span>
+          <span className="text-[0.3em] font-light text-slate-300 dark:text-slate-600">–</span>
           <button type="button" onClick={() => addGamePoint(2)} title="Tap to add a point" className={scoreTapCls}>{tennisSideLabel(s.game2, 2, gameStatus)}</button>
         </div>
         {gameText && (
@@ -647,19 +639,17 @@ function Court21Scoreboard({
       </div>
 
       {/* Big score */}
+      <div className="flex w-full justify-between gap-4 mb-4">
+        {renderTeamPlayers(match.team1, 'center')}
+        {renderTeamPlayers(match.team2, 'center')}
+      </div>
       <div className={panelCls}>
-        {/* Team names above the score */}
-        <div className="flex w-full justify-between gap-4">
-          {renderTeamPlayers(match.team1, 'left')}
-          <span className="self-center text-3xl uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
-            Points
-          </span>
-          {renderTeamPlayers(match.team2, 'right')}
-        </div>
-
+        <span className="self-center text-3xl uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
+          Points
+        </span>
         <div className={`${bigScoreCls} text-emerald-600 dark:text-emerald-400`}>
           <button type="button" onClick={() => add(1)} disabled={isComplete} title="Tap to add a point" className={scoreTapCls}>{s.game1}</button>
-          <span className="text-[0.5em] font-light text-slate-300 dark:text-slate-600">–</span>
+          <span className="text-[0.3em] font-light text-slate-300 dark:text-slate-600">–</span>
           <button type="button" onClick={() => add(2)} disabled={isComplete} title="Tap to add a point" className={scoreTapCls}>{s.game2}</button>
         </div>
       </div>
@@ -692,7 +682,7 @@ function FinishBar({ isReady, onFinish, hint }: { isReady: boolean; onFinish: ()
   return (
     <div className="mt-6 text-center">
       <button
-        className={`${btnPrimary} mx-auto w-full max-w-[260px]`}
+        className={`${btnPrimary} mx-auto w-full`}
         onClick={onFinish}
         disabled={!isReady}
       >

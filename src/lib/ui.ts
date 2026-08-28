@@ -2,7 +2,7 @@
 // Satu sumber UI vocabulary: neutrals slate, satu accent emerald.
 
 export const card =
-  'rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900';
+  'rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 p-4';
 
 export const muted = 'text-slate-500 dark:text-slate-400';
 
